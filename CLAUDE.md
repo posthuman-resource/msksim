@@ -151,6 +151,11 @@ Established in step 00:
 - `scripts/check-node-version.ts` runs via the `predev`/`prestart`/`pretest` hooks. Bypass only with `npm run <script> --ignore-scripts`, and document why in the commit message.
 - The `test:coverage` script uses `@vitest/coverage-v8`. Keep `vitest` and `@vitest/coverage-v8` pinned to the same version; Vitest releases them in lockstep.
 
+Established in step 09:
+- The seeded RNG in `lib/sim/rng.ts` is the **single source of entropy** for the simulation core. `lib/sim/`, `workers/`, and any future `lib/sim/**` module **must not** call `Math.random()`; pass an `RNG` argument through instead. `Math.random` is banned because its state is a V8-global mutable singleton — two modules calling it interfere silently, and V8 is free to change its implementation between Node versions, breaking reproducibility.
+- Every simulation test pins a seed via `createRNG(<seed>)` and asserts bit-identical output across repeated invocations. Determinism failures are hard test failures, not flaky-test retries.
+- The `RNG` interface (`nextInt`, `nextFloat`, `pick`, `pickWeighted`, `shuffle`) is the only supported entropy API in sim code. New entropy needs must extend this interface rather than routing around it.
+
 ## UI verification harness
 
 Populated in step 07. Hard cap: 60 lines. **Every later UI step's plan file references this section by name.**
