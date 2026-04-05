@@ -114,6 +114,16 @@ Established in step 04:
 - The row's primary key *is* the cookie value; there is no separate session id.
 - `validateSession` does not lazily delete expired rows — a future sweeper step will handle GC. Callers must not rely on post-validation cleanup.
 
+Established in step 06:
+- The DAL is `lib/auth/dal.ts`. Starts with `import 'server-only'`. Exports `verifySession = cache(async (): Promise<{ userId: string; expiresAt: Date }>)` and `getCurrentUser = cache(async ())` for header-style username reads. Import `cache` from `'react'`, **not** `'react/cache'` — that is a different ESM entry point and will fail to resolve in v16.
+- `verifySession()` reads the session cookie via `getSessionTokenFromCookie()`, calls `validateSession(token)` from `lib/auth/sessions.ts`, and calls `redirect('/login')` from `next/navigation` on any falsy result. React's per-request `cache()` wrapping means multiple components calling `verifySession()` in the same render tree resolve to a single DB lookup.
+- Route groups: `app/(auth)/` (authenticated — `(auth)/layout.tsx` awaits `verifySession()` once and children inherit) and `app/(public)/` (empty today; pre-emptive carveout for post-v1 `/reports/*` public routes). The `(auth)/page.tsx` placeholder from step 00 lives here until step 07 replaces it. Do **not** add a `page.tsx` to `(public)/` — that would create a second `/` handler and fail the build.
+- `proxy.ts` lives at the **repository root** (not `middleware.ts` — see "Next.js 16 deltas"). Does cookie-presence redirects only. Public allowlist: `/login`, `/api/auth/*`, `/reports/*` (preemptive), and static-asset exclusions in the matcher regex. Every non-allowlisted path without `msksim_session` is 307'd to `/login?next=<encoded-original-path>`.
+- The proxy imports **only** `SESSION_COOKIE_NAME` from `@/lib/auth/sessions`. It must **not** import the sessions service, the DB client, or argon2. Adding those turns the proxy into a hot-path DB caller and makes Turbopack bundle `better-sqlite3` native bindings into the proxy module graph — which fails opaquely.
+- Auth policy lives in the DAL, not the proxy. Every Server Component in `(auth)` and every Server Action calls `verifySession()` directly. Refactoring a Server Action to a different route can silently remove proxy coverage (`proxy.md § Execution order` explicitly warns about this).
+- The `next` query param on `/login?next=...` is set by the proxy from the original pathname + search string. Step 07's login Server Action consumes it to redirect the user back after a successful login.
+- React's `cache()` requires an active React rendering context (AsyncLocalStorage) to deduplicate calls. In Vitest (no context), `cache()` is a pass-through — each call runs the full function. DAL tests verify correctness only; cache deduplication is covered by React's own tests.
+
 ## Testing conventions
 
 Populated in steps 00, 18. Hard cap: 40 lines.
