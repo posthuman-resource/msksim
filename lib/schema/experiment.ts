@@ -11,6 +11,7 @@ import {
   DEFAULT_RETRY_LIMIT,
   DEFAULT_SEED,
   DEFAULT_SAMPLE_INTERVAL,
+  DEFAULT_INTERACTION_MEMORY_SIZE,
 } from "./defaults.js";
 
 // per docs/spec.md §4.1 F3 — scheduler mode for agent activation order
@@ -54,6 +55,9 @@ export const ExperimentConfig = z.object({
 
   // per docs/spec.md §4.1 F10 — RNG seed; 0 is explicitly supported
   seed: z.number().int().default(DEFAULT_SEED),
+
+  // per docs/spec.md §3.3 — max interactions stored per agent for preferential attachment (step 14)
+  interactionMemorySize: z.number().int().positive().default(DEFAULT_INTERACTION_MEMORY_SIZE),
 
   // per docs/spec.md §7.2 — tick interval between full agent-inventory snapshots
   sampleInterval: z.number().int().positive().default(DEFAULT_SAMPLE_INTERVAL),

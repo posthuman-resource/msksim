@@ -58,6 +58,9 @@ export const DEFAULT_WARMUP_TICKS = 100;
 // per docs/spec.md §4.1 F6 — softmax temperature for similarity-weighted partner selection
 export const DEFAULT_PA_TEMPERATURE = 1.0;
 
+// per docs/spec.md §3.3 — bounded FIFO memory per agent for preferential attachment (step 14)
+export const DEFAULT_INTERACTION_MEMORY_SIZE = 50;
+
 // per docs/spec.md §4.3 F12 — default batch replicate count and concurrency
 export const DEFAULT_REPLICATE_COUNT = 10;
 export const DEFAULT_BATCH_CONCURRENCY = 1;

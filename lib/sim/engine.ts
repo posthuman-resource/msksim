@@ -1,0 +1,351 @@
+// Interaction engine for the Naming Game — the per-tick speaker/hearer loop.
+// Per docs/spec.md §3.3 and §4.1 F3.
+//
+// Implements feature F3: deterministic tick function, configurable Δ⁺/Δ⁻/retry
+// limit, three scheduler modes, and the partner-selection seam for step 14.
+//
+// ── Immutability discipline ──────────────────────────────────────────────────
+// AgentState.inventory and AgentState.interactionMemory are updated in-place
+// within the tick body via the mutateInventory / mutateMemory helpers below.
+// The AgentState type declares these fields readonly (by-convention), but the
+// engine owns the simulation state during a tick and must update them. The
+// Inventory values themselves remain immutable: inventorySet / inventoryIncrement
+// return new Maps on every write. The tick returns the same SimulationState
+// reference with tickNumber incremented; callers must not hold references to
+// agent fields across a tick boundary.
+//
+// This module is client-safe, server-safe, and worker-safe — it deliberately
+// does NOT carry `import 'server-only'`. The engine is imported by the step-20
+// Web Worker entrypoint; adding server-only would break Turbopack's worker bundle.
+// See CLAUDE.md "Next.js 16 deltas" and the Research Notes in plan §4 (item 2).
+
+import type { Language, Referent, TokenLexeme } from "@/lib/schema/primitives";
+import type { ExperimentConfig } from "@/lib/schema/experiment";
+import type { AgentId, AgentState, Inventory, InteractionRecord } from "./types";
+import type { RNG } from "./rng";
+import type { World, WorldId } from "./world";
+import type { LanguagePolicy, PolicyConfig } from "./policy";
+import { findAgentByPosition } from "./world";
+import { createPolicy } from "./policy/registry";
+import { updateWeight } from "./engine/weight-update";
+
+// ─── Public types ─────────────────────────────────────────────────────────────
+
+/**
+ * Partner-selection strategy. Step 14 will extend this to
+ * `"uniform" | "preferential"` when preferential attachment is implemented.
+ * Using a string-literal union means adding `"preferential"` in step 14 is a
+ * one-line change and the exhaustiveness check in selectPartner catches it.
+ */
+export type PartnerStrategy = "uniform";
+
+/** Top-level mutable snapshot of a simulation at a given tick boundary. */
+export type SimulationState = {
+  world1: World;
+  world2: World;
+  /** Current tick counter. Starts at 0; incremented by tick() after each call. */
+  tickNumber: number;
+  config: ExperimentConfig;
+};
+
+/**
+ * One completed speaker→hearer interaction in a single tick.
+ * worldId is explicit so metric consumers (steps 15-17) can partition events
+ * by world without a per-agent lookup.
+ */
+export type InteractionEvent = {
+  tick: number;
+  worldId: WorldId;
+  speakerId: AgentId;
+  hearerId: AgentId;
+  language: Language;
+  referent: Referent;
+  token: TokenLexeme;
+  success: boolean;
+};
+
+/**
+ * Return value of tick(). Contains the (mutated-in-place) state, the full list
+ * of interactions that occurred, and a convenience duplicate of state.tickNumber.
+ */
+export type TickResult = {
+  state: SimulationState;
+  interactions: InteractionEvent[];
+  /** The new tick counter after this tick ran (= state.tickNumber). */
+  tickNumber: number;
+};
+
+// ─── Partner selection (seam for step 14) ────────────────────────────────────
+
+/**
+ * Resolve one partner for `speaker` in `world` using `strategy`.
+ *
+ * In the `"uniform"` strategy, delegates to `world.topology.pickNeighbor` and
+ * resolves the returned position index via `findAgentByPosition`.
+ *
+ * Returns `null` when no partner is reachable:
+ *   - `pickNeighbor` returns `null` (isolated node, size-1 well-mixed world, etc.)
+ *   - `findAgentByPosition` returns `undefined` — the topology returned a cell
+ *     index that has no agent (expected in a sparse lattice where agents occupy
+ *     a subset of cells). This is treated as "nobody home" rather than an error.
+ *
+ * Step 14 inserts the `"preferential"` case here; see
+ * docs/plan/14-preferential-attachment.md for the biased softmax strategy.
+ */
+export function selectPartner(
+  speaker: AgentState,
+  world: World,
+  rng: RNG,
+  strategy: PartnerStrategy,
+): AgentState | null {
+  switch (strategy) {
+    case "uniform": {
+      const positionIndex = world.topology.pickNeighbor(speaker.position, rng);
+      if (positionIndex === null) {
+        return null;
+      }
+      const partner = findAgentByPosition(world, positionIndex);
+      // A sparse lattice can return a cell that has no agent — treat as null (no partner).
+      return partner ?? null;
+    }
+    // step 14 inserts 'preferential' here
+  }
+  const _exhaustive: never = strategy;
+  throw new Error(`Unknown partner strategy: ${_exhaustive as string}`);
+}
+
+// ─── Scheduler helper (private) ──────────────────────────────────────────────
+
+/**
+ * Return the list of speaker agents for one world in the activation order for
+ * this tick. Always returns a fresh array (shallow copy or shuffle output) so
+ * callers may mutate it without affecting world.agents.
+ */
+function getActivationOrder(
+  world: World,
+  rng: RNG,
+  mode: ExperimentConfig["schedulerMode"],
+): AgentState[] {
+  switch (mode) {
+    case "sequential":
+      // Shallow copy; step 11 guarantees agents are in id-lexicographic order.
+      return world.agents.slice();
+    case "random":
+      return rng.shuffle(world.agents);
+    case "priority":
+      // priority mode placeholder for future activation-rate weighting;
+      // defaults to random for v1 per plan §7.
+      return rng.shuffle(world.agents);
+  }
+  const _exhaustive: never = mode;
+  throw new Error(`Unknown scheduler mode: ${_exhaustive as string}`);
+}
+
+// ─── Tick entrypoint ──────────────────────────────────────────────────────────
+
+/**
+ * Advance the simulation by one tick.
+ *
+ * Mutates `state.world1.agents`, `state.world2.agents` (inventory and
+ * interactionMemory fields), and `state.tickNumber` in place. Returns the
+ * same `state` reference plus the per-tick `InteractionEvent[]`.
+ *
+ * Determinism contract: calling `tick(state, rng)` with two independently
+ * seeded RNGs (same seed) and two separately bootstrapped states (same seed)
+ * must produce byte-identical `TickResult[]` sequences indefinitely.
+ *
+ * RNG draw order per tick:
+ *   For each world (world1 first, world2 second):
+ *     1. getActivationOrder (one rng.shuffle call, or zero for "sequential")
+ *     2. For each speaker in activation order:
+ *        a. selectPartner → topology.pickNeighbor → rng draw
+ *        b. policy call → rng draw (only for coin-flip rules)
+ *        c. rng.pick(referentKeys) → one rng draw
+ *        d. rng.pickWeighted(lexemes, weights) → one rng draw
+ *        (retry loop repeats b–d up to retryLimit times on failure)
+ */
+export function tick(state: SimulationState, rng: RNG): TickResult {
+  const { world1, world2, tickNumber, config } = state;
+
+  // Build a PolicyConfig from the experiment config + world language labels.
+  // l1Label and l2Label are derived from world1's sorted language list.
+  // Both worlds share the same language namespace (L1/L2 are global labels).
+  const l1Label = (world1.languages[0] ?? world2.languages[0]) as Language;
+  const l2Label = (world1.languages[1] ?? world2.languages[1] ?? world1.languages[0]) as Language;
+  const policyConfig: PolicyConfig = {
+    policyName: "default",
+    entries: config.languagePolicies,
+    l1Label,
+    l2Label,
+  };
+  const policy: LanguagePolicy = createPolicy(policyConfig);
+
+  const events: InteractionEvent[] = [];
+  const { interactionMemorySize, weightUpdateRule, deltaPositive, deltaNegative, retryLimit } =
+    config;
+
+  // Process world1 then world2 (ordering is part of the determinism contract).
+  const worlds: [World, WorldId][] = [
+    [world1, "world1"],
+    [world2, "world2"],
+  ];
+
+  for (const [world, worldId] of worlds) {
+    const speakerList = getActivationOrder(world, rng, config.schedulerMode);
+
+    for (const speaker of speakerList) {
+      let retries = 0;
+
+      // retryLimit = N means the speaker gets at most N+1 total attempts.
+      // The while-loop bound `retries <= retryLimit` enforces this:
+      //   retries=0 → first attempt, retries=1 → first retry, ... retries=N → Nth retry.
+      while (retries <= retryLimit) {
+        // ── (a) Partner selection via the uniform seam ─────────────────────
+        const hearer = selectPartner(speaker, world, rng, "uniform");
+        if (hearer === null) {
+          // Isolated node or empty neighboring cell — not a retry; move on.
+          break;
+        }
+
+        // ── (b) Language selection via step 12's policy ────────────────────
+        const language = policy({ speaker, hearer, rng });
+
+        // ── (c) Referent selection ─────────────────────────────────────────
+        const languageMap = speaker.inventory.get(language);
+        if (!languageMap || languageMap.size === 0) {
+          // Speaker has no referents in the chosen language.
+          // Skip the interaction — not a retry (policy committed to an unknown language).
+          // A future step could add a policy-aware pre-filter here.
+          break;
+        }
+        const referentKeys = Array.from(languageMap.keys());
+        // NOTE: Array.from(Map.keys()) materializes keys each call; acceptable for
+        // typical referent counts (2–5). Documented as a micro-optimization candidate.
+        const referent = rng.pick(referentKeys);
+
+        // ── (d) Token utterance ────────────────────────────────────────────
+        const tokenMap = languageMap.get(referent);
+        if (!tokenMap || tokenMap.size === 0) {
+          // Degenerate: referent key exists but has no token sub-map.
+          break;
+        }
+        const lexemes = Array.from(tokenMap.keys());
+        const weights = Array.from(tokenMap.values()) as number[];
+        const totalWeight = weights.reduce((s, w) => s + w, 0);
+        if (totalWeight <= 0) {
+          // All weights are zero — no utterance possible.
+          break;
+        }
+        const token = rng.pickWeighted(lexemes, weights);
+
+        // ── (e) Hearer guess ───────────────────────────────────────────────
+        // A positive weight for (language, referent, token) is a success.
+        // NOTE: The place to apply a per-interaction mishearing probability
+        // (spec §11 OQ4) would be here, between the lookup and the success branch.
+        // No noise hook is wired in v1; a future noise step inserts here.
+        const hearerWeight = hearer.inventory.get(language)?.get(referent)?.get(token);
+        const success = hearerWeight !== undefined && hearerWeight > 0;
+
+        // Emit the interaction event (uses pre-increment tickNumber per convention).
+        events.push({
+          tick: tickNumber,
+          worldId,
+          speakerId: speaker.id,
+          hearerId: hearer.id,
+          language,
+          referent,
+          token,
+          success,
+        });
+
+        // ── (f) Weight update ──────────────────────────────────────────────
+        if (success) {
+          mutateInventory(
+            speaker,
+            updateWeight(speaker.inventory, language, referent, token, deltaPositive, weightUpdateRule),
+          );
+          mutateInventory(
+            hearer,
+            updateWeight(hearer.inventory, language, referent, token, deltaPositive, weightUpdateRule),
+          );
+        } else if (deltaNegative > 0) {
+          // Optional Δ⁻ penalty (default 0 in the minimal Naming Game).
+          // deltaNegative is stored as a positive number; negate here.
+          // inventoryIncrement's floor at 0 prevents weights from going negative.
+          mutateInventory(
+            speaker,
+            updateWeight(speaker.inventory, language, referent, token, -deltaNegative, weightUpdateRule),
+          );
+          // NOTE: spec §3.3 minimal variant does NOT penalize the hearer on failure.
+          // Hearer update on failure is intentionally absent here.
+        }
+
+        // Update bounded FIFO interaction memory for both participants.
+        const speakerRecord: InteractionRecord = {
+          tick: tickNumber,
+          partnerId: hearer.id,
+          language,
+          referent,
+          token,
+          success,
+        };
+        const hearerRecord: InteractionRecord = {
+          tick: tickNumber,
+          partnerId: speaker.id,
+          language,
+          referent,
+          token,
+          success,
+        };
+        mutateMemory(speaker, speakerRecord, interactionMemorySize);
+        mutateMemory(hearer, hearerRecord, interactionMemorySize);
+
+        if (success) {
+          // Successful interaction: this speaker's activation is done.
+          break;
+        } else {
+          // Failed interaction: retry if budget allows (increment then re-check bound).
+          retries++;
+        }
+      }
+      // If retries > retryLimit, the while-loop condition fails and we fall through
+      // naturally — retry exhaustion is expected and not an error.
+    }
+  }
+
+  // Advance the tick counter (events are tagged with the pre-increment value).
+  state.tickNumber = tickNumber + 1;
+
+  return { state, interactions: events, tickNumber: state.tickNumber };
+}
+
+// ─── Internal mutation helpers ────────────────────────────────────────────────
+
+/**
+ * Assign a new inventory to an AgentState in place.
+ * AgentState.inventory is typed as readonly to prevent accidental external
+ * mutation; the engine deliberately bypasses that via a type cast because it
+ * owns the simulation state during a tick.
+ */
+function mutateInventory(agent: AgentState, newInventory: Inventory): void {
+  (agent as { inventory: Inventory }).inventory = newInventory;
+}
+
+/**
+ * Append a record to an agent's bounded FIFO interaction memory in place.
+ * Drops the oldest entry when the memory is at capacity.
+ * Uses a fresh array on every update to preserve the immutable-array contract
+ * visible to external readers (step 14's preferential-attachment code).
+ */
+function mutateMemory(
+  agent: AgentState,
+  record: InteractionRecord,
+  maxSize: number,
+): void {
+  const current = agent.interactionMemory;
+  const trimmed = current.length >= maxSize ? current.slice(-(maxSize - 1)) : current;
+  (agent as { interactionMemory: readonly InteractionRecord[] }).interactionMemory = [
+    ...trimmed,
+    record,
+  ];
+}
