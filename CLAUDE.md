@@ -154,6 +154,8 @@ Bulleted list. Hard cap: 20 items. If a bullet recurs in plan files, promote it 
 - React 19 strict mode double-invokes effects in development; worker creation inside `useEffect` must be idempotent or clean up in its return function.
 - The Park.is Comlink tutorial cited in `docs/spec.md` §8/§12.4 is for Next 15 + webpack and does **not** apply under Turbopack. Use the `new Worker(new URL(...))` pattern instead.
 - `drizzle-kit generate` must be re-run every time `db/schema/*.ts` changes; generated migrations under `db/migrations/` are checked in.
+- `Language`, `Referent`, and `TokenLexeme` in `lib/schema/` are **opaque branded strings**, not enums, per `docs/spec.md` §3.5. Do not tighten them to `z.enum(["L1","L2"])` — the researcher UI renames them, and the defaults (`"L1"`, `"L2"`, `"yellow-like"`, etc.) are labels, not invariants. Widening is fine; narrowing will break the step-25 config editor.
+- **Zod 4 does not re-parse `.default(value)` through the schema.** `Schema.default({})` returns `{}` as-is, not `Schema.parse({})`. For complex object schemas, supply a pre-computed full default (e.g. `defaultWorldConfig` in `lib/schema/defaults.ts`) instead of `{}`. Field-level defaults on object children still apply correctly when the parent object is present.
 
 ## Living-document rules
 
