@@ -65,6 +65,9 @@ Populated incrementally as steps land. Hard cap: 40 lines. Entries in depth-firs
   - `docs/screenshots/` — MCP verification screenshots (committed)
 - `tests/` — cross-cutting integration tests; single-module tests colocate as `*.test.ts`
 - `data/` — local SQLite file `msksim.db` (gitignored)
+- `vitest.config.ts` — Vitest root config (established step 00)
+- `scripts/check-node-version.ts` — Node ≥ 20.9 guard (established step 00)
+- `tests/smoke.test.ts` — Vitest + `@/` alias canary (established step 00); must not be deleted
 
 ## Commit-message convention
 
@@ -104,6 +107,9 @@ Established in step 00:
 - Tests colocate next to source as `*.test.ts` when testing a single module; cross-cutting integration tests live under `tests/`.
 - Determinism is a hard requirement for simulation tests: every test that exercises the RNG pins a seed and asserts bit-identical output across repeated invocations.
 - Commands: `npm test` → `vitest run`. `npm run test:watch` → `vitest`. Coverage: `vitest run --coverage`.
+- `tests/smoke.test.ts` is the alias/config canary. If it fails, the test harness itself is broken — fix the harness before diagnosing the failing feature.
+- `scripts/check-node-version.ts` runs via the `predev`/`prestart`/`pretest` hooks. Bypass only with `npm run <script> --ignore-scripts`, and document why in the commit message.
+- The `test:coverage` script uses `@vitest/coverage-v8`. Keep `vitest` and `@vitest/coverage-v8` pinned to the same version; Vitest releases them in lockstep.
 
 ## UI verification harness
 
