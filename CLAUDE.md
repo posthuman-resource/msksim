@@ -107,6 +107,13 @@ Established in step 03:
 - **Users table shape**: `id` (text PK, uuid v4 via `$defaultFn(() => crypto.randomUUID())`), `username` (text, unique, not null), `password_hash` (text, not null; self-describing hash string — no separate salt column), `created_at` / `updated_at` (integer timestamp, drizzle runtime `$defaultFn` / `$onUpdateFn` — SQLite has no native `ON UPDATE CURRENT_TIMESTAMP`).
 - `lib/auth/password.ts` must begin with `import 'server-only'` on line 1. Without it, Turbopack bundles `@node-rs/argon2`'s native `.node` binding into a client chunk and fails opaquely (see Known gotchas).
 
+Established in step 04:
+- The session token is 32 bytes from `crypto.randomBytes`, hex-encoded to a 64-character string. No JWT, no signing, no rotation keys.
+- Default session TTL is 7 days, configurable per-call via the second argument to `createSession`.
+- Cookie name is `msksim_session`. Flags: `HttpOnly`, `SameSite=Lax`, `Secure` in production, `Path=/`, `expires` set to the row's `expires_at`.
+- The row's primary key *is* the cookie value; there is no separate session id.
+- `validateSession` does not lazily delete expired rows — a future sweeper step will handle GC. Callers must not rely on post-validation cleanup.
+
 ## Testing conventions
 
 Populated in steps 00, 18. Hard cap: 40 lines.
@@ -167,6 +174,7 @@ Bulleted list. Hard cap: 20 items. If a bullet recurs in plan files, promote it 
 - `@node-rs/argon2` ships prebuilt NAPI binaries for all common platforms. If loading it throws on a new dev machine, run `npm rebuild @node-rs/argon2` — do not switch libraries. Rationale: the native binding is 10× faster than pure-JS/WASM at equivalent parameters and prebuilt binaries cover darwin, linux-gnu, linux-musl, and windows.
 - The Argon2 hash string is self-describing (variant, params, salt, and hash are all embedded). Do not add a separate `salt` column to `users`; the `password_hash` column is the complete record. Rationale: adding a salt column duplicates data that is already in the hash string and invites desync bugs.
 - **Zod 4 does not re-parse `.default(value)` through the schema.** `Schema.default({})` returns `{}` as-is, not `Schema.parse({})`. For complex object schemas, supply a pre-computed full default (e.g. `defaultWorldConfig` in `lib/schema/defaults.ts`) instead of `{}`. Field-level defaults on object children still apply correctly when the parent object is present.
+- `better-sqlite3` opens connections with `PRAGMA foreign_keys = OFF` by default; the singleton client must set it `ON` explicitly or `ON DELETE CASCADE` is silently a no-op. (*Rationale*: sqlite's default is off for historical back-compat, and drizzle-kit emits the constraint in SQL but cannot set the pragma for you.)
 
 ## Living-document rules
 
