@@ -91,6 +91,14 @@ Established in step 02:
 - Vitest tests of server-only modules require `resolve.alias: { 'server-only': '.../server-only/empty.js' }` in `vitest.config.ts` (already configured in step 02).
 - Writes happen in Server Actions; reads happen in Server Components (via the DAL, step 06) or in Server Actions. Client components **never** import from `lib/db/`.
 
+Established in step 08:
+- The simulation persistence layer has four tables: `configs` (saved `ExperimentConfig`s with canonicalized JSON and SHA-256 content hashes), `runs` (one row per simulation with `status`, `classification`, and nullable `summary_json`), `tick_metrics` (long-format: one row per `(run_id, tick, world, metric_name)` observation), and `snapshots` (sampled agent-state blobs keyed by `run_id` + `tick` + `kind`). Cascade policy: `runs.config_id`, `tick_metrics.run_id`, and `snapshots.run_id` use `ON DELETE CASCADE`. `configs.created_by` and `runs.created_by` use `ON DELETE SET NULL` — deleting a user never deletes their research artifacts.
+- `tick_metrics` is long-format (not a `metrics_json` column on `runs`). Step 30's CSV export streams `SELECT tick, world, metric_name, metric_value FROM tick_metrics WHERE run_id = ?` directly into the response with O(1) memory. A JSON blob would require `JSON.parse` on the hot path and make export non-streaming.
+- `tick_metrics` has composite PK `(run_id, tick, world, metric_name)` plus two secondary indexes: `(run_id, metric_name)` for the "all ticks of one metric" pattern (time-series charts) and `(run_id, tick)` for "all metrics of one tick" (live dashboard replay).
+- `content_json` on `configs`, `summary_json` on `runs`, and `content_json` on `snapshots` are plain `text()` columns — NOT `text({ mode: 'json' })`. The `{ mode: 'json' }` option triggers automatic `JSON.parse`/`stringify` on every read/write, which would re-shuffle key order and invalidate `content_hash`. Callers serialize and parse explicitly.
+- `configs.content_hash` is SHA-256 over canonicalized JSON (keys sorted recursively). Step 30 export filenames use the first 8 hex characters. No `UNIQUE` constraint — the same researcher may save the same config twice under different names.
+- Helper modules in `lib/db/` (`configs.ts`, `runs.ts`, `tick-metrics.ts`, `snapshots.ts`) all begin with `import 'server-only'`. **`db/schema/` files must NOT have `import 'server-only'`** — drizzle-kit reads schema files in a plain Node CJS context and `server-only` throws there. `better-sqlite3` transactions require a **synchronous** callback; use `.run()` on query builders inside `db.transaction(tx => { ... })` — passing an `async` callback throws "Transaction function cannot return a promise".
+
 ## Authentication patterns
 
 Populated in steps 03-07. Hard cap: 80 lines.
