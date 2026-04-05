@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# msksim: local database
+/data
+
+# msksim: run-plan logs (keep the directory, ignore contents)
+/docs/plan/logs/*
+!/docs/plan/logs/.gitkeep
+
+# other log files
+*.log

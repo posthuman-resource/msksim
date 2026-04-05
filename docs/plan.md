@@ -1,0 +1,81 @@
+# msksim Build Plan
+
+A step-by-step plan for building the `msksim` application from the specification in `docs/spec.md` and the user's overrides recorded in `CLAUDE.md`. Each numbered step corresponds to a file at `docs/plan/NN-*.md` describing exactly one `claude -p` invocation that ends with a single commit tagged `step NN: <title>`.
+
+The pipeline is executed automatically by `scripts/run-plan.ts`:
+
+```bash
+npx tsx scripts/run-plan.ts --list          # show status
+npx tsx scripts/run-plan.ts --dry-run       # preview prompts
+npx tsx scripts/run-plan.ts                 # run from next pending step
+npx tsx scripts/run-plan.ts --only 05       # run one step in isolation
+```
+
+The script is **interruptable** (Ctrl-C) and **resumable** (detects completed steps via the `step NN:` commit markers in `git log`). Each step's plan file is self-contained and references `CLAUDE.md` and `docs/spec.md` by path rather than duplicating their contents.
+
+Steps marked **UI** run against a fresh `next build && next start` server on a random free port and include chrome-devtools MCP verification scripts. `scripts/run-plan.ts` owns the server lifecycle for these steps; see the "UI verification harness" section of `CLAUDE.md`.
+
+---
+
+## Phase 1 — Foundation (steps 00-08)
+
+| # | File | Description |
+|---|---|---|
+| 00 | [00-project-bootstrap.md](plan/00-project-bootstrap.md) | Initial repository setup: remove the Next.js starter page and SVGs, install Vitest + happy-dom, wire the `@/` path alias, adopt ESLint flat config, assert Node ≥ 20.9, run `next typegen`, and pre-flight `@node-rs/argon2` + `better-sqlite3` native builds. |
+| 01 | [01-zod-config-schema.md](plan/01-zod-config-schema.md) | Define the Zod schemas that describe every knob in the simulation: `ExperimentConfig`, `WorldConfig`, `AgentClass` enum, topology discriminated union, Δ⁺/Δ⁻, and language policies. These schemas are the single source of truth used later by the UI, the worker, and the drizzle column types. |
+| 02 | [02-drizzle-sqlite-scaffolding.md](plan/02-drizzle-sqlite-scaffolding.md) | Install `better-sqlite3`, `drizzle-orm`, and `drizzle-kit`. Create the `lib/db/client.ts` singleton (with `import 'server-only'`), the `db/migrations/` directory, the drizzle config, the env schema, and `scripts/migrate.ts` for explicit migration application. |
+| 03 | [03-user-schema-argon2.md](plan/03-user-schema-argon2.md) | Add the `users` table to the drizzle schema and implement `lib/auth/password.ts` using `@node-rs/argon2`. Unit tests verify the hash/verify roundtrip and that bad passwords fail. |
+| 04 | [04-session-schema-service.md](plan/04-session-schema-service.md) | Add the `sessions` table and implement `lib/auth/sessions.ts` (create, validate, destroy, cookie helpers) behind an `import 'server-only'` guard. |
+| 05 | [05-cli-user-management.md](plan/05-cli-user-management.md) | Build `scripts/users.ts` with `add`, `remove`, `list`, and `change-password` subcommands that use the drizzle client directly. |
+| 06 | [06-proxy-route-groups-dal.md](plan/06-proxy-route-groups-dal.md) | Establish the Next.js 16 auth layering: `proxy.ts` for cookie-presence redirects, `app/(auth)/layout.tsx` and `app/(public)/layout.tsx` route groups, and `lib/auth/dal.ts` with the `cache(verifySession)` pattern that every Server Action and Server Component will call. |
+| 07 | [07-login-and-app-shell.md](plan/07-login-and-app-shell.md) | **[UI]** Build the login form at `app/login/page.tsx` (Server Action + argon2), the logout action, and the authenticated `app/(auth)/layout.tsx` shell with header and nav stubs for Playground / Experiments / Runs. Chrome-devtools MCP verification covers login → navigate → logout → redirect. |
+| 08 | [08-run-persistence-schema.md](plan/08-run-persistence-schema.md) | Add the `configs`, `runs`, `tick_metrics`, and `snapshots` tables, deriving column types from the Zod schemas in step 01 where possible. Write read/write helper modules. |
+
+## Phase 2 — Simulation core (steps 09-18)
+
+| # | File | Description |
+|---|---|---|
+| 09 | [09-seeded-rng-core-types.md](plan/09-seeded-rng-core-types.md) | Wrap `pure-rand` in a seeded RNG utility, and define the core simulation types: `AgentId`, `Language`, `Referent`, `Token`, `Inventory`, `Weight`, and the `AgentClass` enum. Determinism tests. |
+| 10 | [10-topology-implementations.md](plan/10-topology-implementations.md) | Implement the three topologies declared in `docs/spec.md` §2: `Lattice` (Moore and Von Neumann neighborhoods), `WellMixed`, and `Network` (graphology-backed stub for v2). Topology-agnostic iterator interface with neighbor-query tests. |
+| 11 | [11-agent-bootstrapping.md](plan/11-agent-bootstrapping.md) | Instantiate two worlds from a config and seed with deterministic agent placement and vocabulary seeding per `docs/spec.md` §3.4. Tests verify that identical seed + config produces identical initial state. |
+| 12 | [12-language-selection-policies.md](plan/12-language-selection-policies.md) | Implement F5's pluggable `(speaker, hearer) → Language` policies for the four rules in `docs/spec.md` §3.3. The default policy set reproduces the PDF's stated rules; alternatives are registerable. |
+| 13 | [13-interaction-engine.md](plan/13-interaction-engine.md) | The per-tick speaker → hearer → guess → weight-update loop from `docs/spec.md` §3.3 with additive Δ⁺/Δ⁻ and optional L1 normalization. Leaves a `selectPartner(strategy)` seam for step 14. Deterministic given a seed. |
+| 14 | [14-preferential-attachment.md](plan/14-preferential-attachment.md) | F6 preferential attachment via softmax over cosine similarity of top-weighted token vectors, with a warm-up period and an ablation toggle. Wires into the step-13 partner-selection seam. |
+| 15 | [15-scalar-metrics.md](plan/15-scalar-metrics.md) | Implement the scalar per-tick observables from `docs/spec.md` §7.1: communication success rate, mean token weight, token-weight variance, number of distinct active tokens (Nw), and matching rate. Pure functions with known-answer tests. |
+| 16 | [16-graph-metrics.md](plan/16-graph-metrics.md) | Implement the graph-derived metrics: largest-cluster size, cluster count, Louvain modularity via `graphology-communities-louvain`, assimilation index, and segregation index. Adds `graphology` and the Louvain plugin as dependencies. |
+| 17 | [17-run-summary-metrics.md](plan/17-run-summary-metrics.md) | Implement the end-of-run classifiers from `docs/spec.md` §7.3: time-to-consensus detection and assimilation / segregation / mixed / inconclusive labeling with configurable thresholds. |
+| 18 | [18-simulation-smoke-test.md](plan/18-simulation-smoke-test.md) | Node-side script that runs a small deterministic simulation and asserts bit-for-bit reproducibility across repeated invocations, plausible metric trajectories, and divergent outcomes across policy ablations. |
+
+## Phase 3 — Worker integration (steps 19-20)
+
+| # | File | Description |
+|---|---|---|
+| 19 | [19-worker-bootstrap-smoke.md](plan/19-worker-bootstrap-smoke.md) | **[UI]** De-risk worker bundling in isolation before the simulation crosses the wire: a minimal worker created with `new Worker(new URL('./hello.worker.ts', import.meta.url), { type: 'module' })`, a Comlink roundtrip, and verification that Turbopack builds it in both `dev` and `build && start`. Uses a temporary `/app/(public)/_dev/worker-smoke/page.tsx` removed in step 20. |
+| 20 | [20-simulation-worker-integration.md](plan/20-simulation-worker-integration.md) | Move the pure simulation modules (steps 09-18) into `workers/simulation.worker.ts` and expose a typed Comlink API (`init`, `step`, `run`, `getMetrics`, `subscribe`). The seeded RNG lives inside the worker and never crosses the wire. |
+
+## Phase 4 — Visualization (steps 21-24)
+
+| # | File | Description |
+|---|---|---|
+| 21 | [21-lattice-canvas-renderer.md](plan/21-lattice-canvas-renderer.md) | **[UI]** Build the `SimulationShell` client component and a Canvas 2D renderer for each world with a projection toggle (class / dominant token / matching rate). Hover reveals the agent's full inventory. MCP verification drives ~50 ticks and takes a screenshot. |
+| 22 | [22-metrics-dashboard.md](plan/22-metrics-dashboard.md) | **[UI]** Build the Recharts synchronized time-series dashboard covering the scalar, graph, and run-summary metrics. Pin-to-large-view. MCP verification reads the chart SVG via `evaluate_script` to confirm non-empty series. |
+| 23 | [23-network-view.md](plan/23-network-view.md) | **[UI]** Build the sigma.js + graphology WebGL rendering of the cumulative interaction graph with Louvain community coloring and zoom/pan. WebGL smoke check via MCP. |
+| 24 | [24-interactive-controls.md](plan/24-interactive-controls.md) | **[UI]** Wire play / pause / step / reset, variable tick rate, RNG seed input, and debounced sliders for the hot parameters (mono:bi ratio, interaction probability, Δ⁺, Δ⁻, preferential-attachment strength). MCP verification exercises each control. |
+
+## Phase 5 — Experiment workflow (steps 25-31)
+
+| # | File | Description |
+|---|---|---|
+| 25 | [25-experiment-config-ui.md](plan/25-experiment-config-ui.md) | **[UI]** Build the form-driven Zod config editor backed by the `configs` table: save, load, duplicate, export to JSON. MCP verification creates a config and reopens it after a page reload. |
+| 26 | [26-run-persistence-and-browser.md](plan/26-run-persistence-and-browser.md) | **[UI]** On simulation completion, the worker emits final state; a Server Action writes to `runs`, `tick_metrics`, and `snapshots`. Build the `app/(auth)/runs` browser with filter/sort and run-reopen. MCP verification covers the full save → list → reopen roundtrip. |
+| 27 | [27-batch-queue.md](plan/27-batch-queue.md) | **[UI]** F12 batch queue: a pool of simulation workers bounded by `navigator.hardwareConcurrency - 1`, a progress panel, partial-failure isolation, and cancellation. MCP verifies a 3-run batch completes. |
+| 28 | [28-parameter-sweep.md](plan/28-parameter-sweep.md) | **[UI]** F13 parameter sweep: cartesian-product config generator on top of the batch queue, per-cell aggregation with means and CIs, and a heatmap view. MCP verifies a 2×2×3-replicate sweep. |
+| 29 | [29-run-comparison.md](plan/29-run-comparison.md) | **[UI]** F14 run comparison: select up to 4 runs and render their time-series on shared axes, with a CSV download of aligned metrics. MCP verifies the comparison view. |
+| 30 | [30-export.md](plan/30-export.md) | **[UI]** F16 exports: long-format CSV and JSON snapshot downloads via a streaming API route (`app/api/export/[runId]/route.ts`), with filenames including the config hash and seed. MCP verifies the downloads. |
+| 31 | [31-hypothesis-presets.md](plan/31-hypothesis-presets.md) | **[UI]** F17 one-click hypothesis presets: Outcome 1 (segregation), Outcome 2 (assimilation), and the mean-field control. Each tagged with citations to specific slides of the source PDF. MCP verification loads and runs each preset. |
+
+## Phase 6 — Polish (step 32)
+
+| # | File | Description |
+|---|---|---|
+| 32 | [32-polish-and-e2e-smoke.md](plan/32-polish-and-e2e-smoke.md) | **[UI]** Error boundaries, loading states, empty states. End-to-end chrome-devtools MCP smoke that exercises a full researcher journey: login → create config → run sim → save → reopen → export. |
