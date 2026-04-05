@@ -102,6 +102,11 @@ Established in steps 03-07:
 - **Authorization lives in `lib/auth/dal.ts`**, not the proxy. The DAL exports `verifySession = cache(async () => { ... })`. React's `cache()` dedupes calls within a single request. **Every** Server Component in `app/(auth)/` and every Server Action calls `verifySession()` directly. Do not rely on the proxy alone — refactoring a Server Action to a different route can silently strip proxy coverage, and POSTing directly to a Server Action URL bypasses the page-level check.
 - Route groups: `app/(auth)/` for authenticated pages (the `(auth)/layout.tsx` invokes `verifySession()` once, children inherit); `app/(public)/` for future public-report routes (zero-refactor carveout).
 
+Established in step 03:
+- **Password policy**: Argon2id via `@node-rs/argon2` defaults (m=19456 KiB, t=2, p=1 — exactly the OWASP minimums). Do not pass a custom `options` argument to `hash()`; the defaults are correct and any hand-tuning is unsupported churn until profiling says otherwise.
+- **Users table shape**: `id` (text PK, uuid v4 via `$defaultFn(() => crypto.randomUUID())`), `username` (text, unique, not null), `password_hash` (text, not null; self-describing hash string — no separate salt column), `created_at` / `updated_at` (integer timestamp, drizzle runtime `$defaultFn` / `$onUpdateFn` — SQLite has no native `ON UPDATE CURRENT_TIMESTAMP`).
+- `lib/auth/password.ts` must begin with `import 'server-only'` on line 1. Without it, Turbopack bundles `@node-rs/argon2`'s native `.node` binding into a client chunk and fails opaquely (see Known gotchas).
+
 ## Testing conventions
 
 Populated in steps 00, 18. Hard cap: 40 lines.
@@ -159,6 +164,8 @@ Bulleted list. Hard cap: 20 items. If a bullet recurs in plan files, promote it 
 - The Park.is Comlink tutorial cited in `docs/spec.md` §8/§12.4 is for Next 15 + webpack and does **not** apply under Turbopack. Use the `new Worker(new URL(...))` pattern instead.
 - `drizzle-kit generate` must be re-run every time `db/schema/*.ts` changes; generated migrations under `db/migrations/` are checked in.
 - `Language`, `Referent`, and `TokenLexeme` in `lib/schema/` are **opaque branded strings**, not enums, per `docs/spec.md` §3.5. Do not tighten them to `z.enum(["L1","L2"])` — the researcher UI renames them, and the defaults (`"L1"`, `"L2"`, `"yellow-like"`, etc.) are labels, not invariants. Widening is fine; narrowing will break the step-25 config editor.
+- `@node-rs/argon2` ships prebuilt NAPI binaries for all common platforms. If loading it throws on a new dev machine, run `npm rebuild @node-rs/argon2` — do not switch libraries. Rationale: the native binding is 10× faster than pure-JS/WASM at equivalent parameters and prebuilt binaries cover darwin, linux-gnu, linux-musl, and windows.
+- The Argon2 hash string is self-describing (variant, params, salt, and hash are all embedded). Do not add a separate `salt` column to `users`; the `password_hash` column is the complete record. Rationale: adding a salt column duplicates data that is already in the hash string and invites desync bugs.
 - **Zod 4 does not re-parse `.default(value)` through the schema.** `Schema.default({})` returns `{}` as-is, not `Schema.parse({})`. For complex object schemas, supply a pre-computed full default (e.g. `defaultWorldConfig` in `lib/schema/defaults.ts`) instead of `{}`. Field-level defaults on object children still apply correctly when the parent object is present.
 
 ## Living-document rules

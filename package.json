@@ -18,6 +18,7 @@
     "db:migrate": "tsx --conditions=react-server scripts/migrate.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
     "better-sqlite3": "^12.8.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.2",

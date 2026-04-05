@@ -8,7 +8,4 @@
 //   export * from './users';
 //   export * from './sessions';
 
-// Marker export so TypeScript treats this as a module and drizzle-kit has a
-// valid schema target before any entity tables are defined. Remove when the
-// first entity file is re-exported here.
-export const __schemaMarker = true;
+export * from './users';
