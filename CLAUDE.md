@@ -124,6 +124,12 @@ Established in step 06:
 - The `next` query param on `/login?next=...` is set by the proxy from the original pathname + search string. Step 07's login Server Action consumes it to redirect the user back after a successful login.
 - React's `cache()` requires an active React rendering context (AsyncLocalStorage) to deduplicate calls. In Vitest (no context), `cache()` is a pass-through — each call runs the full function. DAL tests verify correctness only; cache deduplication is covered by React's own tests.
 
+Established in step 07:
+- The login page at `app/login/page.tsx` is **outside** `app/(auth)/` and is the only page that does NOT call `verifySession()`. It is reachable unauthenticated by design.
+- Login and logout are both **Server Actions**. Logout uses `<form action={logoutAction}>` in the layout header — no client boundary needed.
+- The login Server Action returns `{ message: 'invalid credentials' }` for every failure path (malformed input, unknown username, wrong password) to avoid leaking which field failed.
+- The `next` redirect param is passed through `sanitizeNext` (accepts only paths matching `/^\/[^/]/`; rejects absolute URLs, `//`, `javascript:`, `data:`, CRLF) before being handed to `redirect()`.
+
 ## Testing conventions
 
 Populated in steps 00, 18. Hard cap: 40 lines.
@@ -147,6 +153,15 @@ Established in step 07:
 - Each UI step's MCP script reads `process.env.MSKSIM_BASE_URL`, clears storage (`evaluate_script('localStorage.clear(); sessionStorage.clear()')` + cookie clear via DevTools protocol), then logs in with the seed credentials (`MSKSIM_SEED_USER` / `MSKSIM_SEED_PASS`). `run-plan.ts` seeds the user via a direct drizzle call before each UI step; no shelling out to `scripts/users.ts`.
 - Every UI step saves a screenshot to `docs/screenshots/step-NN.png` and commits it as part of the step's diff so reviewers can eyeball the visual change.
 - Console-log triage: React 19 dev-mode warnings (e.g., strict-mode double-invocation notices) are benign and ignored. Thrown errors, hydration mismatches, unhandled promise rejections, and 4xx/5xx network responses always fail the step.
+
+Established in step 07:
+- The exact MCP round-trip script (login → shell → logout → wrong-password) is in `docs/plan/07-login-and-app-shell.md` §10. Later UI steps copy and adapt the login phase rather than reinventing it.
+- The proxy redirect is **307**; the Server Action login-success `redirect()` is **303** (Next 16 `redirect()` from a Server Action always returns 303 per `redirect.md`). Both are expected and must be tolerated by the `list_network_requests` triage.
+- `scripts/run-plan.ts`'s `ensureSeedUser` creates/repairs the seed user before each UI step. If the step gets stuck on the login page, check that migrations have run and the seed user exists before debugging the UI.
+- One screenshot at `docs/screenshots/step-NN-home.png` is mandatory per UI step. Additional screenshots for sub-views are optional.
+- `document.cookie` JS API cannot clear `HttpOnly` cookies. The reliable reset path is `mcp__chrome-devtools__new_page` at the start of each MCP script, which gives a fresh browser context with no cookies.
+- **`'use server'` at file level marks ALL exports as Server Actions** — non-async exports cause a Turbopack build error. Put pure sync helpers (validators, sanitizers) in a separate file with no directive; import them from both the actions file and the unit tests.
+- `export type { T }` re-exports in a `'use server'` file cause `ReferenceError: T is not defined` at SSR module evaluation (Turbopack treats the type re-export as a value reference). Remove such re-exports; consumers should import the type directly from its source module.
 
 ## Worker lifecycle
 
