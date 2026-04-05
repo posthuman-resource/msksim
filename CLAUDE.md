@@ -82,10 +82,14 @@ Each plan step must produce **exactly one commit**. If `claude -p` produces mult
 Populated in steps 02, 08, 26. Hard cap: 50 lines.
 
 Established in step 02:
-- Every file that imports `lib/db/client.ts` or `drizzle-orm` starts with `import 'server-only'`. This prevents accidental bundling into client components and the opaque Turbopack native-binding failures that result.
-- The drizzle client is a **singleton** exported from `lib/db/client.ts`. Do not instantiate `better-sqlite3` elsewhere.
-- Schema lives in `db/schema/*.ts`. Migrations are generated via `drizzle-kit generate`, checked in under `db/migrations/`, and applied explicitly by `scripts/migrate.ts` — **never** at app start.
-- Writes happen in Server Actions; reads happen in Server Components via the DAL, or in Server Actions. Client components **never** import from `lib/db/`.
+- Every file under `lib/db/` and `lib/env.ts` starts with `import 'server-only'` as its first import. This is **non-negotiable** — omitting it creates the Turbopack opaque native-binding failure documented in "Known gotchas".
+- The drizzle client is a module-load singleton exported from `lib/db/client.ts`. Do not instantiate `drizzle(...)` or `new Database(...)` elsewhere. Tests use `:memory:` by setting `MSKSIM_DB_PATH=':memory:'` **before** importing the module (use `vi.stubEnv`).
+- Schema entity files live at `db/schema/<entity>.ts` and are re-exported from `db/schema/index.ts`. `drizzle.config.ts` points at `db/schema/index.ts`. `db/schema/index.ts` must always export at least one symbol so TypeScript treats it as a module (use `__schemaMarker` until the first entity lands).
+- Migrations are checked in under `db/migrations/`. `npm run db:generate` creates them from the current schema; `npm run db:migrate` applies them. Migration is **explicit** — never at app startup, never in a `postinstall` hook, never inside a Server Action.
+- The DB path and session secret flow through `lib/env.ts` (Zod-validated, reads `process.env` at module-load time). Scripts outside Next use `@next/env`'s `loadEnvConfig(process.cwd())` before importing any module that transitively imports `lib/env.ts`. Because esbuild/tsx hoists static `import` statements above executable code, use an **async wrapper + dynamic `import()`** for the DB client in scripts (see `scripts/migrate.ts`).
+- `tsx` scripts that import server-only modules must use `tsx --conditions=react-server`. This activates the `react-server` conditional export in the `server-only` package, mapping it to its own `empty.js` stub instead of the throwing `index.js`.
+- Vitest tests of server-only modules require `resolve.alias: { 'server-only': '.../server-only/empty.js' }` in `vitest.config.ts` (already configured in step 02).
+- Writes happen in Server Actions; reads happen in Server Components (via the DAL, step 06) or in Server Actions. Client components **never** import from `lib/db/`.
 
 ## Authentication patterns
 
