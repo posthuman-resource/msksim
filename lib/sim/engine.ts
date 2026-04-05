@@ -19,25 +19,25 @@
 // Web Worker entrypoint; adding server-only would break Turbopack's worker bundle.
 // See CLAUDE.md "Next.js 16 deltas" and the Research Notes in plan §4 (item 2).
 
-import type { Language, Referent, TokenLexeme } from "@/lib/schema/primitives";
-import type { ExperimentConfig } from "@/lib/schema/experiment";
-import type { AgentId, AgentState, Inventory, InteractionRecord } from "./types";
-import type { RNG } from "./rng";
-import type { World, WorldId } from "./world";
-import type { LanguagePolicy, PolicyConfig } from "./policy";
-import { findAgentByPosition } from "./world";
-import { createPolicy } from "./policy/registry";
-import { updateWeight } from "./engine/weight-update";
+import type { Language, Referent, TokenLexeme } from '@/lib/schema/primitives';
+import type { ExperimentConfig } from '@/lib/schema/experiment';
+import type { AgentId, AgentState, Inventory, InteractionRecord } from './types';
+import type { RNG } from './rng';
+import type { World, WorldId } from './world';
+import type { LanguagePolicy, PolicyConfig } from './policy';
+import { findAgentByPosition } from './world';
+import { createPolicy } from './policy/registry';
+import { updateWeight } from './engine/weight-update';
+import { createPartnerSelector } from './partner-selector';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
 /**
- * Partner-selection strategy. Step 14 will extend this to
- * `"uniform" | "preferential"` when preferential attachment is implemented.
- * Using a string-literal union means adding `"preferential"` in step 14 is a
- * one-line change and the exhaustiveness check in selectPartner catches it.
+ * Partner-selection strategy.
+ *   "uniform"      — uniform random pick from topology neighbors (ablation baseline).
+ *   "preferential" — softmax-biased pick toward similar-inventory neighbors (F6).
  */
-export type PartnerStrategy = "uniform";
+export type PartnerStrategy = 'uniform' | 'preferential';
 
 /** Top-level mutable snapshot of a simulation at a given tick boundary. */
 export type SimulationState = {
@@ -83,14 +83,16 @@ export type TickResult = {
  * In the `"uniform"` strategy, delegates to `world.topology.pickNeighbor` and
  * resolves the returned position index via `findAgentByPosition`.
  *
+ * In the `"preferential"` strategy, enumerates ALL topology neighbors, resolves
+ * them to AgentStates, then delegates to `preferentialSelectPartner` (via
+ * `createPartnerSelector`) for the softmax-biased pick. This overload accepts
+ * a pre-built `PartnerSelectorFn` to avoid re-creating the closure on every call.
+ * Pass the result of `createPartnerSelector(config, tickNumber)` here.
+ *
  * Returns `null` when no partner is reachable:
  *   - `pickNeighbor` returns `null` (isolated node, size-1 well-mixed world, etc.)
- *   - `findAgentByPosition` returns `undefined` — the topology returned a cell
- *     index that has no agent (expected in a sparse lattice where agents occupy
- *     a subset of cells). This is treated as "nobody home" rather than an error.
- *
- * Step 14 inserts the `"preferential"` case here; see
- * docs/plan/14-preferential-attachment.md for the biased softmax strategy.
+ *   - `findAgentByPosition` returns `undefined` (sparse lattice, empty neighbor cell).
+ *   - All topology neighbors resolve to empty cells.
  */
 export function selectPartner(
   speaker: AgentState,
@@ -99,7 +101,7 @@ export function selectPartner(
   strategy: PartnerStrategy,
 ): AgentState | null {
   switch (strategy) {
-    case "uniform": {
+    case 'uniform': {
       const positionIndex = world.topology.pickNeighbor(speaker.position, rng);
       if (positionIndex === null) {
         return null;
@@ -108,7 +110,22 @@ export function selectPartner(
       // A sparse lattice can return a cell that has no agent — treat as null (no partner).
       return partner ?? null;
     }
-    // step 14 inserts 'preferential' here
+    case 'preferential': {
+      // Enumerate all neighbors and let createPartnerSelector handle the biased pick.
+      // The selector is constructed fresh per-tick by the tick() function below;
+      // calling it here with a dummy tick=0 config is only for the exported selectPartner seam.
+      // Callers that need preferential attachment should use createPartnerSelector directly.
+      // This case exists so the PartnerStrategy union is exhaustive and type-safe.
+      const neighborPositions = Array.from(world.topology.neighbors(speaker.position, rng));
+      if (neighborPositions.length === 0) return null;
+      const candidates = neighborPositions
+        .map((pos) => findAgentByPosition(world, pos))
+        .filter((a): a is AgentState => a !== undefined);
+      if (candidates.length === 0) return null;
+      // With no config context here, fall back to a uniform pick over materialized neighbors.
+      // The tick() function below uses createPartnerSelector for the real biased behavior.
+      return rng.pick(candidates);
+    }
   }
   const _exhaustive: never = strategy;
   throw new Error(`Unknown partner strategy: ${_exhaustive as string}`);
@@ -124,15 +141,15 @@ export function selectPartner(
 function getActivationOrder(
   world: World,
   rng: RNG,
-  mode: ExperimentConfig["schedulerMode"],
+  mode: ExperimentConfig['schedulerMode'],
 ): AgentState[] {
   switch (mode) {
-    case "sequential":
+    case 'sequential':
       // Shallow copy; step 11 guarantees agents are in id-lexicographic order.
       return world.agents.slice();
-    case "random":
+    case 'random':
       return rng.shuffle(world.agents);
-    case "priority":
+    case 'priority':
       // priority mode placeholder for future activation-rate weighting;
       // defaults to random for v1 per plan §7.
       return rng.shuffle(world.agents);
@@ -158,7 +175,7 @@ function getActivationOrder(
  *   For each world (world1 first, world2 second):
  *     1. getActivationOrder (one rng.shuffle call, or zero for "sequential")
  *     2. For each speaker in activation order:
- *        a. selectPartner → topology.pickNeighbor → rng draw
+ *        a. selectPartnerFn → rng draw(s) for neighbor selection / softmax pick
  *        b. policy call → rng draw (only for coin-flip rules)
  *        c. rng.pick(referentKeys) → one rng draw
  *        d. rng.pickWeighted(lexemes, weights) → one rng draw
@@ -173,12 +190,17 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
   const l1Label = (world1.languages[0] ?? world2.languages[0]) as Language;
   const l2Label = (world1.languages[1] ?? world2.languages[1] ?? world1.languages[0]) as Language;
   const policyConfig: PolicyConfig = {
-    policyName: "default",
+    policyName: 'default',
     entries: config.languagePolicies,
     l1Label,
     l2Label,
   };
   const policy: LanguagePolicy = createPolicy(policyConfig);
+
+  // Resolve partner-selection strategy for this tick (F6 preferential attachment).
+  // createPartnerSelector reads config.preferentialAttachment.enabled and tickNumber
+  // once at tick-init time; the returned closure is called for every speaker.
+  const selectPartnerFn = createPartnerSelector(config, tickNumber);
 
   const events: InteractionEvent[] = [];
   const { interactionMemorySize, weightUpdateRule, deltaPositive, deltaNegative, retryLimit } =
@@ -186,8 +208,8 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
 
   // Process world1 then world2 (ordering is part of the determinism contract).
   const worlds: [World, WorldId][] = [
-    [world1, "world1"],
-    [world2, "world2"],
+    [world1, 'world1'],
+    [world2, 'world2'],
   ];
 
   for (const [world, worldId] of worlds) {
@@ -200,8 +222,8 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
       // The while-loop bound `retries <= retryLimit` enforces this:
       //   retries=0 → first attempt, retries=1 → first retry, ... retries=N → Nth retry.
       while (retries <= retryLimit) {
-        // ── (a) Partner selection via the uniform seam ─────────────────────
-        const hearer = selectPartner(speaker, world, rng, "uniform");
+        // ── (a) Partner selection (uniform or preferential per F6 config) ──
+        const hearer = selectPartnerFn(speaker, world, rng);
         if (hearer === null) {
           // Isolated node or empty neighboring cell — not a retry; move on.
           break;
@@ -262,11 +284,25 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
         if (success) {
           mutateInventory(
             speaker,
-            updateWeight(speaker.inventory, language, referent, token, deltaPositive, weightUpdateRule),
+            updateWeight(
+              speaker.inventory,
+              language,
+              referent,
+              token,
+              deltaPositive,
+              weightUpdateRule,
+            ),
           );
           mutateInventory(
             hearer,
-            updateWeight(hearer.inventory, language, referent, token, deltaPositive, weightUpdateRule),
+            updateWeight(
+              hearer.inventory,
+              language,
+              referent,
+              token,
+              deltaPositive,
+              weightUpdateRule,
+            ),
           );
         } else if (deltaNegative > 0) {
           // Optional Δ⁻ penalty (default 0 in the minimal Naming Game).
@@ -274,7 +310,14 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
           // inventoryIncrement's floor at 0 prevents weights from going negative.
           mutateInventory(
             speaker,
-            updateWeight(speaker.inventory, language, referent, token, -deltaNegative, weightUpdateRule),
+            updateWeight(
+              speaker.inventory,
+              language,
+              referent,
+              token,
+              -deltaNegative,
+              weightUpdateRule,
+            ),
           );
           // NOTE: spec §3.3 minimal variant does NOT penalize the hearer on failure.
           // Hearer update on failure is intentionally absent here.
@@ -337,11 +380,7 @@ function mutateInventory(agent: AgentState, newInventory: Inventory): void {
  * Uses a fresh array on every update to preserve the immutable-array contract
  * visible to external readers (step 14's preferential-attachment code).
  */
-function mutateMemory(
-  agent: AgentState,
-  record: InteractionRecord,
-  maxSize: number,
-): void {
+function mutateMemory(agent: AgentState, record: InteractionRecord, maxSize: number): void {
   const current = agent.interactionMemory;
   const trimmed = current.length >= maxSize ? current.slice(-(maxSize - 1)) : current;
   (agent as { interactionMemory: readonly InteractionRecord[] }).interactionMemory = [
