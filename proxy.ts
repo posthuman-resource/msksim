@@ -13,7 +13,11 @@ import { SESSION_COOKIE_NAME } from '@/lib/auth/sessions';
 // The matcher regex below is a belt; this list is the suspender — it covers
 // paths the regex might let through (e.g. /reports without trailing slash).
 // See plan file §7 for the belt-and-suspenders rationale.
-const PUBLIC_PATHS = ['/login', '/reports'] as const;
+const PUBLIC_PATHS = [
+  '/login',
+  '/reports',
+  '/_dev', // TEMPORARY: added in step 19 for the worker-bootstrap smoke page. Step 20 removes this entry along with the /_dev/worker-smoke page.
+] as const;
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));

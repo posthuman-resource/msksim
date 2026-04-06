@@ -209,6 +209,16 @@ Established in steps 19-20:
 - **Simulation determinism**: the seeded RNG lives inside the worker and never crosses the wire. A call to `step()` or `run()` is fully self-contained; the main thread cannot influence RNG state by changing message ordering.
 - React 19 strict-mode double-invokes effects in development. Worker construction in `useEffect` must be idempotent, or must clean up properly in the effect's return callback.
 
+Established in step 19:
+
+- The `new URL(path, import.meta.url)` expression form is **required** — Turbopack recognizes it as a bundler directive (`turbopack.md` § Magic Comments) and emits a separate worker chunk via its generic worker bootstrap (`turbopack-worker-*.js`). A string literal URL would **not** trigger code-splitting and would fail at runtime.
+- The `{ type: 'module' }` option is load-bearing: it tells the worker runtime to treat the entry as an ES module enabling `import` statements inside the worker.
+- Use `import type { WorkerApi }` (type-only import) from the worker module on the main thread. A runtime import pulls the worker module into the client bundle graph, defeating the code-split.
+- The idempotent cleanup pattern is `let cancelled = false` inside the effect + `return () => { cancelled = true; worker.terminate(); }`. The `cancelled` flag prevents stale `setState` calls from a terminated worker's in-flight promises landing after cleanup.
+- **Folder naming**: URL path segments beginning with `_` are Private Folders in Next.js App Router (excluded from routing). To expose a route URL of `/_dev/...`, name the directory `%5Fdev` (URL-encoded underscore). See `node_modules/next/dist/docs/01-app/01-getting-started/02-project-structure.md` § Private folders.
+- Turbopack bundles worker code into content-hashed chunk files (e.g. `0x0qxuysu~-5l.js`) loaded by the `turbopack-worker-*.js` bootstrap via `importScripts`. The worker chunk is not named after the source file; look for `turbopack-worker-*.js` in network requests to confirm the worker chunk was fetched.
+- `graphology` (CJS package) imports correctly inside a Turbopack worker bundle — confirmed by step-19 smoke test.
+
 ## Export conventions
 
 Populated in step 30. Hard cap: 20 lines.
