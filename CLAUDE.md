@@ -99,6 +99,8 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - Seeded RNG lives in worker, never crosses wire. Visualization uses separate RNG (seed + 1).
 - Payloads are plain objects (structured-clone safe). No Map/class/functions.
 - `next/dynamic` with `ssr: false` invalid in Server Components — import client components directly.
+- **Multi-worker batches (step 27)**: `app/(auth)/experiments/batch/worker-pool.ts` calls `createSimulationWorker()` N times (N = concurrency, capped at 8). Slots reuse workers via `dispatchNext(slotIndex)`. Cancellation calls `terminate()` + `Promise.race` with a cancellation token. Pool persists every terminal replicate via step 26's `persistCompletedRun` or `persistFailedReplicate`.
+- **Worker pool testing**: the pool's `createWorker` option is injectable — unit tests pass mock factories returning `{ api, terminate }` stubs without constructing real Workers.
 
 ## Visualization extensions
 
@@ -130,6 +132,9 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - `crypto.subtle.digest` needs secure context (HTTPS or localhost).
 - Debounce worker effects with `useState + useEffect + setTimeout`, not `useDeferredValue`.
 - RHF: `watch()` for conditional fields, not `getValues()`. Use `handleSubmit` wrapper with `useActionState`, not `<form action>` directly.
+- `navigator.hardwareConcurrency` is **undefined during SSR**. Read it inside `useState` function-initializer or `useEffect`, not at module scope. Degrade: `typeof navigator === 'undefined' ? 1 : Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1)`.
+- Server Action body limit is 1MB by default. Batch runs with large `metricsTimeSeries` exceed this. Set `experimental.serverActions.bodySizeLimit` in `next.config.ts`.
+- `useSyncExternalStore` compares snapshots via `Object.is`. If `getSnapshot` returns a new object every call (e.g., `structuredClone`), React re-renders infinitely. Cache the snapshot and return the same reference between emits.
 
 ## Living-document rules
 

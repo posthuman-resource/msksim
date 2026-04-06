@@ -8,12 +8,21 @@ import Link from 'next/link';
 
 import { verifySession } from '@/lib/auth/dal';
 import { listConfigs } from '@/lib/db/configs';
+import { ExperimentConfig } from '@/lib/schema/experiment';
 import { ConfigListItem } from './ConfigListItem';
+import { BatchRunButton } from './batch/batch-run-button';
 
 export default async function ExperimentsPage() {
   await verifySession();
 
   const rows = await listConfigs({ limit: 100 });
+
+  // Parse configs for the batch run button
+  const batchConfigs = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    config: ExperimentConfig.parse(JSON.parse(row.contentJson)),
+  }));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -26,12 +35,15 @@ export default async function ExperimentsPage() {
             </p>
           )}
         </div>
-        <Link
-          href="/experiments/new"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          New config
-        </Link>
+        <div className="flex items-center gap-2">
+          {rows.length > 0 && <BatchRunButton configs={batchConfigs} />}
+          <Link
+            href="/experiments/new"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            New config
+          </Link>
+        </div>
       </div>
 
       {rows.length === 0 ? (
