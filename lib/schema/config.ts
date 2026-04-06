@@ -48,10 +48,7 @@ export type {
 } from './policy';
 
 export { VocabularySeed, WorldConfig } from './world';
-export type {
-  VocabularySeed as VocabularySeedType,
-  WorldConfig as WorldConfigType,
-} from './world';
+export type { VocabularySeed as VocabularySeedType, WorldConfig as WorldConfigType } from './world';
 
 export { PreferentialAttachmentConfig } from './preferential';
 export type { PreferentialAttachmentConfig as PreferentialAttachmentConfigType } from './preferential';

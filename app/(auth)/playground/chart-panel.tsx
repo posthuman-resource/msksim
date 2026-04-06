@@ -208,7 +208,11 @@ export function ChartPanel({
       {/* Chart body */}
       <div className="h-[calc(100%-2.5rem)] w-full min-h-[10rem]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} syncId={syncId} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+          <LineChart
+            data={data}
+            syncId={syncId}
+            margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="tick" tick={{ fontSize: 11 }} stroke="#9ca3af" />
             <YAxis domain={domain} tick={{ fontSize: 11 }} stroke="#9ca3af" />

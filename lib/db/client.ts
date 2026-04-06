@@ -37,7 +37,9 @@ function lazyProxy<T extends object>(resolve: () => T): T {
     get(_, prop) {
       const target = resolve();
       const value = Reflect.get(target, prop);
-      return typeof value === 'function' ? (value as Function).bind(target) : value;
+      return typeof value === 'function'
+        ? (value as (...args: unknown[]) => unknown).bind(target)
+        : value;
     },
   });
 }

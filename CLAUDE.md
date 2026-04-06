@@ -205,7 +205,7 @@ Established in step 22:
 
 ## Worker lifecycle
 
-Populated in steps 19, 20. Hard cap: 40 lines.
+Populated in steps 19, 20. Extended in step 23 (see "Visualization extensions"). Hard cap: 40 lines.
 
 Established in steps 19-20:
 
@@ -232,6 +232,18 @@ Established in step 20:
 - **Callback marshalling**: `onProgress` passed to `api.run(...)` must be wrapped with `Comlink.proxy(callback)` on the main thread. Plain function values throw `DataCloneError` because functions are not structured-cloneable.
 - **Cleanup order**: `terminate()` calls `api[Comlink.releaseProxy]()` **before** `worker.terminate()`. Reversing the order can leave dangling Comlink resolvers if a `run()` promise is in flight.
 - **Structured-clone safety**: `TickReport` and `RunResult` payloads are plain objects with `Record<string, number>` metric maps — no `Map`, no class instances, no functions. `FullStateSnapshot` serializes agent inventories as `[language, referent, lexeme, weight][]` quadruples. `getMetrics()` returns `{ scalar: ScalarMetricsSnapshot; graph: GraphMetricsSnapshot }` (named pair, not intersection — both snapshots have `world1`/`world2` fields with incompatible shapes).
+
+## Visualization extensions
+
+Populated in step 23. Hard cap: 20 lines.
+
+Established in step 23:
+
+- Step 23 extends `SimulationWorkerApi` with `getInteractionGraph(): Promise<InteractionGraphReport>`. The report carries a `graphology` `SerializedGraph` (plain JSON via `graph.export()`), the per-node Louvain community assignments as a `[key, value][]` entries array (Map rehydration happens on the main thread), and the current modularity score. The playground shell polls this method at a low frequency (every `INTERACTION_GRAPH_POLL_INTERVAL = 10` ticks) and passes results to `app/(auth)/playground/network-view.tsx` for sigma.js v3 rendering.
+- **Visualization RNG isolation**: `getInteractionGraph` uses `state.visualizationRng` (seeded from `config.seed + 1`) rather than `state.rng` so Louvain calls from visualization polling never advance the simulation RNG. The determinism invariant (`run(N, ...)` twice with the same seed → bit-identical results) is preserved regardless of polling frequency. Any future read-only worker method that draws randomness must follow the same child-RNG pattern.
+- **sigma v3 + ForceAtlas2**: the network view owns its sigma instance via a `useRef` and calls `sigmaInstance.kill()` in the `useEffect` cleanup. ForceAtlas2 runs on the main thread inside the same effect only when the serialized graph changes shape — not every tick. Node positions are cached in a `useRef<Map>` across rebuilds for warm-start layout convergence.
+- **`SerializedGraph` type import**: graphology does not re-export `SerializedGraph` from its main entry. Import it from `graphology-types` directly: `import type { SerializedGraph } from 'graphology-types'`.
+- **Debug globals**: `window.__msksim_debug_graph` and `window.__msksim_debug_sigma` are always exposed in the browser (no NODE_ENV guard) so the MCP verification harness can read graph state from a production build.
 
 ## Export conventions
 
@@ -266,7 +278,7 @@ Bulleted list. Hard cap: 20 items. If a bullet recurs in plan files, promote it 
 - The tick loop in `lib/sim/engine.ts` enforces a per-speaker `retryLimit` to bound the worst-case tick cost: on interaction failure the speaker may attempt another partner up to `config.retryLimit` times within the same activation. **The retry counter must reset at the top of each speaker's activation** (not across agents), and the while-loop bound uses `retries <= retryLimit` so `retryLimit = 1` allows exactly one retry (two total attempts). A regression that forgets to reset the counter or uses strict `<` produces either an infinite loop or a silent success-rate plateau; both are caught by `lib/sim/engine.test.ts`'s retry-exhaustion test. Separately, `selectPartner` returns `null` (not throws) when `findAgentByPosition` returns `undefined` — this is expected in a sparse lattice where agents occupy only a subset of grid cells. (_Rationale_: the plan said to throw, but throwing would crash every lattice simulation since neighboring cells are frequently empty.)
 - `graphology-communities-louvain`'s `louvain.detailed(graph)` crashes or returns `undefined` modularity on graphs with zero edges or fewer than two nodes. `lib/sim/metrics/graph.ts` guards every Louvain call with `graph.order < 2 || graph.size < 1 → return 0`. Apply the same guard to any future induced subgraph before calling Louvain. (_Rationale_: the degenerate graph is reachable at simulation start before any successful interactions have occurred.)
 - `lib/env.ts` and `lib/db/client.ts` use **lazy-init Proxies** — module import is side-effect-free; initialization fires on first property/method access. This is load-bearing for `next build` on Render.com where the DB and `MSKSIM_SESSION_SECRET` are unavailable. A regression to eager init breaks the build. `tests/build-safety.test.ts` catches this. (_Rationale_: `next build` bundles server modules even for dynamic routes; eager `new Database()` or `envSchema.safeParse()` at module scope would crash the build process.)
-- **Relative `.js` extension imports in `lib/schema/` fail under Turbopack's SSR module tracer** when the file is imported (directly or transitively) from a Server Component. Use bare relative imports (no `.js`) within `lib/schema/` files. The `@/lib/schema/filename` absolute alias always works from any context. (_Rationale_: Turbopack's SSR bundler resolves extensions using Node.js-style rules where `.js` means an actual `.js` file; bare relative imports fall through to Turbopack's bundler-resolution which maps them to `.ts`. Fixed in step 22._)
+- **Relative `.js` extension imports in `lib/schema/` fail under Turbopack's SSR module tracer** when the file is imported (directly or transitively) from a Server Component. Use bare relative imports (no `.js`) within `lib/schema/` files. The `@/lib/schema/filename` absolute alias always works from any context. (_Rationale_: Turbopack's SSR bundler resolves extensions using Node.js-style rules where `.js` means an actual `.js` file; bare relative imports fall through to Turbopack's bundler-resolution which maps them to `.ts`. Fixed in step 22.\_)
 - **`next/dynamic` with `ssr: false` cannot be used in a Server Component** (Next.js 16 throws at build time). If a Client Component that constructs a Worker needs to be loaded from a Server Component, import it directly — the `'use client'` boundary on the component prevents server execution. The `ssr: false` pattern is only valid inside another Client Component.
 
 ## Living-document rules

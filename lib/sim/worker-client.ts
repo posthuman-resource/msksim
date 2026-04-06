@@ -33,6 +33,7 @@ import type {
   WorldId,
   ProjectionKind,
   CellData,
+  InteractionGraphReport,
 } from '@/workers/simulation.worker';
 
 // Re-export all public types so consumers import everything from this module
@@ -47,6 +48,7 @@ export type {
   WorldId,
   ProjectionKind,
   CellData,
+  InteractionGraphReport,
 };
 export type { Remote };
 

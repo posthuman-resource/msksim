@@ -42,9 +42,7 @@ const COLORS = {
  * Returns NaN when no valid (non-NaN) per-language mean exists.
  * This is a v1 simplification; step 25's language selector will refine this.
  */
-function meanOverLanguages(
-  perLanguage: Record<string, { meanTokenWeight: number }>,
-): number {
+function meanOverLanguages(perLanguage: Record<string, { meanTokenWeight: number }>): number {
   const vals = Object.values(perLanguage)
     .map((v) => v.meanTokenWeight)
     .filter((v) => !isNaN(v));
@@ -186,9 +184,8 @@ export function MetricsDashboard({ history, maxDisplayPoints = 1000 }: MetricsDa
     [view],
   );
 
-  const [yAxisConfigs, setYAxisConfigs] = useState<Record<string, YAxisConfig>>(
-    buildInitialYAxisConfigs,
-  );
+  const [yAxisConfigs, setYAxisConfigs] =
+    useState<Record<string, YAxisConfig>>(buildInitialYAxisConfigs);
 
   const [pinnedChartId, setPinnedChartId] = useState<string | null>(null);
 
@@ -202,10 +199,7 @@ export function MetricsDashboard({ history, maxDisplayPoints = 1000 }: MetricsDa
   return (
     <div className="flex flex-col gap-2">
       {/* Tick counter */}
-      <div
-        className="text-sm text-gray-400 px-4"
-        data-testid="current-tick"
-      >
+      <div className="text-sm text-gray-400 px-4" data-testid="current-tick">
         Tick: {view[view.length - 1]?.tick ?? 0}
       </div>
 

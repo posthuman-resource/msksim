@@ -18,6 +18,7 @@
 // No Math.random() — all entropy flows through the seeded RNG (CLAUDE.md "Testing conventions").
 
 import * as Comlink from 'comlink';
+import type { SerializedGraph } from 'graphology-types';
 
 import { ExperimentConfig } from '@/lib/schema/experiment';
 import type { AgentClass, Language } from '@/lib/schema/primitives';
@@ -29,7 +30,7 @@ import {
   updateInteractionGraph,
 } from '@/lib/sim/metrics/interaction-graph';
 import type { UndirectedGraph } from '@/lib/sim/metrics/interaction-graph';
-import { computeGraphMetrics } from '@/lib/sim/metrics/graph';
+import { computeGraphMetrics, computeInteractionGraphCommunities } from '@/lib/sim/metrics/graph';
 import { computeScalarMetrics } from '@/lib/sim/metrics/scalar';
 import { computeRunSummary } from '@/lib/sim/metrics/summary';
 import type {
@@ -37,6 +38,7 @@ import type {
   GraphMetricsSnapshot,
   RunSummary,
 } from '@/lib/sim/metrics/types';
+import { createRNG } from '@/lib/sim/rng';
 import type { RNG } from '@/lib/sim/rng';
 import type { WorldId } from '@/lib/sim/world';
 
@@ -115,6 +117,23 @@ export interface FullStateSnapshot {
 export type ExperimentConfigInput = ExperimentConfig;
 
 /**
+ * Serialized interaction-graph report returned by getInteractionGraph().
+ *
+ * `graph` is a plain JSON-serializable graphology SerializedGraph (via graph.export()).
+ * `communities` is the Louvain per-node assignment serialized as [agentId, communityId][]
+ * tuples — Map is not reliably structured-clone-safe across browser versions, so the
+ * quadruple-array pattern established in FullStateSnapshot is reused here. The main
+ * thread rehydrates to Map<string, number> before passing into NetworkView.
+ */
+export interface InteractionGraphReport {
+  graph: SerializedGraph;
+  communities: Array<[string, number]>;
+  modularity: number;
+  nodeCount: number;
+  edgeCount: number;
+}
+
+/**
  * Typed Comlink RPC surface exposed by the simulation worker.
  *
  * All methods return Promises because Comlink wraps synchronous implementations
@@ -149,6 +168,17 @@ export interface SimulationWorkerApi {
    * Called on demand (not every tick) to avoid saturating the postMessage channel.
    */
   getLatticeProjection(worldId: WorldId, kind: ProjectionKind): Promise<CellData[]>;
+  /**
+   * Return a serialized snapshot of the cumulative interaction graph with Louvain
+   * community assignments. Added by step 23 for the network view.
+   *
+   * Uses state.visualizationRng (seeded from config.seed + 1) rather than state.rng
+   * so Louvain calls from visualization polling never advance the simulation RNG.
+   * This preserves the CLAUDE.md determinism invariant: run(N, ...) twice with the
+   * same seed produces bit-identical results regardless of how often the main thread
+   * polls getInteractionGraph().
+   */
+  getInteractionGraph(): Promise<InteractionGraphReport>;
 }
 
 // ─── Module-level mutable state ───────────────────────────────────────────────
@@ -160,6 +190,13 @@ export interface SimulationWorkerApi {
 type WorkerState = {
   simState: SimulationState;
   rng: RNG;
+  /**
+   * Dedicated RNG for visualization-only operations (e.g. Louvain in getInteractionGraph).
+   * Seeded from config.seed + 1 so it never shares state with the simulation RNG.
+   * This ensures visualization polling does not advance state.rng and cannot break
+   * the determinism invariant (run(N,...) twice → identical results).
+   */
+  visualizationRng: RNG;
   interactionGraph: UndirectedGraph;
   /** L2 label derived from world1.languages (sorted alphabetically by bootstrap). */
   l2Label: Language;
@@ -256,6 +293,9 @@ const init: SimulationWorkerApi['init'] = async (rawConfig, seed) => {
   state = {
     simState: { world1, world2, tickNumber: 0, config },
     rng,
+    // Dedicated visualization RNG seeded at config.seed + 1 so Louvain calls from
+    // getInteractionGraph() never advance the simulation RNG. See WorkerState doc comment.
+    visualizationRng: createRNG(seed + 1),
     interactionGraph: createInteractionGraph(),
     l2Label,
     scalarTimeSeries: [],
@@ -446,6 +486,30 @@ const getLatticeProjection: SimulationWorkerApi['getLatticeProjection'] = async 
   });
 };
 
+/**
+ * Return a serialized snapshot of the cumulative interaction graph for network rendering.
+ *
+ * Louvain community detection uses state.visualizationRng (not state.rng) so repeated
+ * calls to this method do not advance the simulation RNG and cannot break determinism.
+ * An empty graph (< 2 nodes or < 1 edge) returns empty communities and zero modularity.
+ */
+const getInteractionGraph: SimulationWorkerApi['getInteractionGraph'] = async () => {
+  const s = assertInitialized('getInteractionGraph');
+
+  const { assignments, modularity } = computeInteractionGraphCommunities(
+    s.interactionGraph,
+    s.visualizationRng,
+  );
+
+  return {
+    graph: s.interactionGraph.export() as SerializedGraph,
+    communities: Array.from(assignments.entries()),
+    modularity,
+    nodeCount: s.interactionGraph.order,
+    edgeCount: s.interactionGraph.size,
+  };
+};
+
 // ─── Comlink exposure ─────────────────────────────────────────────────────────
 //
 // No guard needed — this module only runs inside a Worker where self is always defined.
@@ -458,6 +522,7 @@ const api: SimulationWorkerApi = {
   getSnapshot,
   reset,
   getLatticeProjection,
+  getInteractionGraph,
 };
 
 Comlink.expose(api);

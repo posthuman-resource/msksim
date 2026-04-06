@@ -35,6 +35,8 @@ import { tokenToColor } from './colors';
 import { createMetricsHistory, appendTick } from './metrics-history';
 import type { MetricsHistory } from './metrics-history';
 import { MetricsDashboard } from './metrics-dashboard';
+import { NetworkView } from './network-view';
+import type { SerializedGraph } from 'graphology-types';
 
 /** Hard-coded default config so the playground renders immediately without DB access. */
 const DEFAULT_CONFIG = ExperimentConfig.parse({});
@@ -52,6 +54,16 @@ const LATTICE_HEIGHT = (() => {
 
 /** Interval between play-mode ticks (ms). Fast enough for visible progress, not overwhelming. */
 const TICK_INTERVAL_MS = 200;
+
+/**
+ * Poll the interaction graph from the worker every N ticks during play mode.
+ * Low frequency so ForceAtlas2 layout runs infrequently. Step 24 may expose
+ * this as a user-facing slider.
+ */
+const INTERACTION_GRAPH_POLL_INTERVAL = 10;
+
+/** Active view tab. 'metrics' tab is only shown when MetricsDashboard is present. */
+type ViewTab = 'lattice' | 'metrics' | 'network';
 
 type WorkerHandle = {
   api: Remote<SimulationWorkerApi>;
@@ -72,10 +84,17 @@ export function SimulationShell() {
   const [metricsHistory, setMetricsHistory] = useState<MetricsHistory>(() =>
     createMetricsHistory(10_000),
   );
+  const [view, setView] = useState<ViewTab>('lattice');
+  const [interactionGraph, setInteractionGraph] = useState<{
+    graph: SerializedGraph;
+    communities: Map<string, number>;
+  } | null>(null);
 
   // Keep selectedWorld and projectionKind in refs so async callbacks capture fresh values.
   const selectedWorldRef = useRef(selectedWorld);
   const projectionKindRef = useRef(projectionKind);
+  // Tick counter for low-frequency interaction-graph polling.
+  const ticksSinceGraphPollRef = useRef(0);
   useEffect(() => {
     selectedWorldRef.current = selectedWorld;
   }, [selectedWorld]);
@@ -157,6 +176,17 @@ export function SimulationShell() {
             projectionKindRef.current,
           );
           setCells(projection);
+
+          // Low-frequency interaction-graph poll (every INTERACTION_GRAPH_POLL_INTERVAL ticks).
+          ticksSinceGraphPollRef.current += 1;
+          if (ticksSinceGraphPollRef.current >= INTERACTION_GRAPH_POLL_INTERVAL) {
+            ticksSinceGraphPollRef.current = 0;
+            const igReport = await handle.api.getInteractionGraph();
+            setInteractionGraph({
+              graph: igReport.graph,
+              communities: new Map(igReport.communities),
+            });
+          }
         } catch {
           // Worker terminated mid-interval — stop the loop.
           setIsRunning(false);
@@ -216,6 +246,16 @@ export function SimulationShell() {
     return all.map((t) => ({ token: t, color: tokenToColor(t, all) }));
   }, [cells, projectionKind]);
 
+  // ─── Tab styling helper ───────────────────────────────────────────────────────
+
+  const tabClass = (t: ViewTab) =>
+    [
+      'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+      view === t
+        ? 'border-blue-500 text-blue-400'
+        : 'border-transparent text-gray-400 hover:text-gray-200',
+    ].join(' ');
+
   // ─── JSX ──────────────────────────────────────────────────────────────────────
 
   return (
@@ -253,46 +293,83 @@ export function SimulationShell() {
         </div>
 
         {/* Status readout */}
-        <span className="text-sm text-gray-500">
+        <span data-testid="tick-counter" className="text-sm text-gray-500">
           Tick: {currentTick} &middot; World: {selectedWorld}
         </span>
 
         {!ready && <span className="text-sm text-gray-400 italic">Initialising…</span>}
       </div>
 
-      {/* Projection toggle */}
-      <ProjectionToggle
-        projectionKind={projectionKind}
-        onChange={setProjectionKind}
-        legendItems={legendItems}
-      />
+      {/* View tab bar */}
+      <div className="flex gap-0 border-b border-slate-700">
+        <button
+          data-testid="tab-lattice"
+          onClick={() => setView('lattice')}
+          className={tabClass('lattice')}
+        >
+          Lattice
+        </button>
+        <button
+          data-testid="tab-metrics"
+          onClick={() => setView('metrics')}
+          className={tabClass('metrics')}
+        >
+          Metrics
+        </button>
+        <button
+          data-testid="tab-network"
+          onClick={() => setView('network')}
+          className={tabClass('network')}
+        >
+          Network
+        </button>
+      </div>
 
-      {/* Canvas + metrics layout: side-by-side on wide screens, stacked on narrow */}
-      <div className="flex flex-col xl:flex-row gap-4">
-        {/* Canvas + tooltip wrapper */}
-        <div className="relative shrink-0">
-          <LatticeCanvas
-            world={selectedWorld}
+      {/* Lattice view */}
+      {view === 'lattice' && (
+        <>
+          {/* Projection toggle */}
+          <ProjectionToggle
             projectionKind={projectionKind}
-            cells={cells}
-            latticeWidth={LATTICE_WIDTH}
-            latticeHeight={LATTICE_HEIGHT}
-            onHoverCell={onHoverCell}
+            onChange={setProjectionKind}
+            legendItems={legendItems}
           />
-          {hoveredAgent && hoveredPointer && (
-            <AgentTooltip
-              agent={hoveredAgent}
-              pointerX={hoveredPointer.x}
-              pointerY={hoveredPointer.y}
-            />
-          )}
-        </div>
 
-        {/* Metrics dashboard */}
+          {/* Canvas + tooltip */}
+          <div className="relative shrink-0 w-fit">
+            <LatticeCanvas
+              world={selectedWorld}
+              projectionKind={projectionKind}
+              cells={cells}
+              latticeWidth={LATTICE_WIDTH}
+              latticeHeight={LATTICE_HEIGHT}
+              onHoverCell={onHoverCell}
+            />
+            {hoveredAgent && hoveredPointer && (
+              <AgentTooltip
+                agent={hoveredAgent}
+                pointerX={hoveredPointer.x}
+                pointerY={hoveredPointer.y}
+              />
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Metrics view */}
+      {view === 'metrics' && (
         <div className="flex-1 min-w-0">
           <MetricsDashboard history={metricsHistory} />
         </div>
-      </div>
+      )}
+
+      {/* Network view */}
+      {view === 'network' && (
+        <NetworkView
+          graph={interactionGraph?.graph ?? null}
+          communities={interactionGraph?.communities ?? null}
+        />
+      )}
     </div>
   );
 }
