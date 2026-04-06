@@ -97,9 +97,7 @@ const defaultConfig = ExperimentConfig.parse({});
 
 describe('computeRunSummary — mean/median/max on constant series', () => {
   it('constant successRate = 0.75 over 200 ticks returns 0.75 for all three aggregates', () => {
-    const scalar = Array.from({ length: 200 }, () =>
-      makeScalarSnapshot({ successRate: 0.75 }),
-    );
+    const scalar = Array.from({ length: 200 }, () => makeScalarSnapshot({ successRate: 0.75 }));
     const result = computeRunSummary(scalar, [], defaultConfig);
     expect(result.meanMetrics['world1.successRate']).toBeCloseTo(0.75, 10);
     expect(result.medianMetrics['world1.successRate']).toBeCloseTo(0.75, 10);
@@ -255,9 +253,7 @@ describe("classifyRun — 'mixed' (middling values)", () => {
 
   it('end-to-end via computeRunSummary', () => {
     const scalar = Array.from({ length: 10 }, () => makeScalarSnapshot({}));
-    const graphs = [
-      makeGraphSnapshot({ tick: 9, assimilationIndex: 0.5, segregationIndex: 0.5 }),
-    ];
+    const graphs = [makeGraphSnapshot({ tick: 9, assimilationIndex: 0.5, segregationIndex: 0.5 })];
     const result = computeRunSummary(scalar, graphs, defaultConfig);
     expect(result.classification).toBe('mixed');
   });
@@ -303,9 +299,7 @@ describe("divergence detection — 'diverged' convergence status", () => {
   });
 
   it('weight exceeding 1e15 → convergenceStatus=diverged', () => {
-    const scalar = [
-      makeScalarSnapshot({ meanTokenWeight: 1e16 }),
-    ];
+    const scalar = [makeScalarSnapshot({ meanTokenWeight: 1e16 })];
     const result = computeRunSummary(scalar, [], defaultConfig);
     expect(result.convergenceStatus).toBe('diverged');
   });
@@ -405,7 +399,9 @@ describe('ExperimentConfig.parse({}) integration — schema defaults resolve', (
     expect(config.convergence.consensusWindowTicks).toBe(100);
     // End-to-end with schema defaults
     const scalar = Array.from({ length: 200 }, () => makeScalarSnapshot({ nw: 1, nw2: 1 }));
-    const graphs = [makeGraphSnapshot({ tick: 199, assimilationIndex: 0.9, segregationIndex: 0.1 })];
+    const graphs = [
+      makeGraphSnapshot({ tick: 199, assimilationIndex: 0.9, segregationIndex: 0.1 }),
+    ];
     const result = computeRunSummary(scalar, graphs, config);
     expect(result.classification).toBe('assimilated');
     expect(result.convergenceStatus).toBe('converged');

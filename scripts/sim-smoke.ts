@@ -283,9 +283,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // 6d. Modularity ∈ [-0.5, 1.0] (theoretical Louvain range per step 16 research notes).
   const modularity = finalGraph?.interactionGraphModularity ?? 0;
   if (modularity < -0.5 || modularity > 1.0) {
-    console.error(
-      `FAIL plausibility: interactionGraphModularity=${modularity} not in [-0.5, 1.0]`,
-    );
+    console.error(`FAIL plausibility: interactionGraphModularity=${modularity} not in [-0.5, 1.0]`);
     hasFailure = true;
   }
 

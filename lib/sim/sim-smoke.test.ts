@@ -50,9 +50,7 @@ describe('sim-smoke', () => {
     // JSON.stringify gives a readable diff in Vitest output and is equivalent to
     // deep-equal for structuredClone-safe shapes (which every sim module returns).
     // This is the canonical determinism check pattern per CLAUDE.md "Testing conventions".
-    expect(JSON.stringify(result1.scalarTimeSeries)).toBe(
-      JSON.stringify(result2.scalarTimeSeries),
-    );
+    expect(JSON.stringify(result1.scalarTimeSeries)).toBe(JSON.stringify(result2.scalarTimeSeries));
     expect(JSON.stringify(result1.graphTimeSeries)).toBe(JSON.stringify(result2.graphTimeSeries));
   });
 

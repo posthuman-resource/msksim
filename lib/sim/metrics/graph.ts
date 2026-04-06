@@ -224,11 +224,7 @@ export function computeAssimilationIndex(
  * Louvain is seeded via rng.nextFloat for reproducibility across test runs.
  * Complement to assimilationIndex; together they operationalise RQ1/RQ5.
  */
-export function computeSegregationIndex(
-  interactionGraph: Graph,
-  world2: World,
-  rng: RNG,
-): number {
+export function computeSegregationIndex(interactionGraph: Graph, world2: World, rng: RNG): number {
   // Collect W2-Immigrant IDs.
   const immigrantIds = new Set<string>();
   for (const agent of world2.agents) {

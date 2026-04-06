@@ -74,9 +74,9 @@ export const DEFAULT_CONSENSUS_WINDOW_TICKS = 100;
 // per docs/spec.md §7.3 — user-configurable classification thresholds
 export const defaultClassificationThresholds = {
   assimilationHigh: 0.7, // α: finalAssimilation must exceed this to classify as assimilated
-  segregationLow: 0.3,   // β: finalSegregation must be below this to classify as assimilated
-  assimilationLow: 0.3,  // γ: finalAssimilation must be below this to classify as segregated
-  segregationHigh: 0.7,  // δ: finalSegregation must exceed this to classify as segregated
+  segregationLow: 0.3, // β: finalSegregation must be below this to classify as assimilated
+  assimilationLow: 0.3, // γ: finalAssimilation must be below this to classify as segregated
+  segregationHigh: 0.7, // δ: finalSegregation must exceed this to classify as segregated
 } as const;
 
 // per docs/spec.md §7.3 — convergence stability window (user-configurable per experiment)

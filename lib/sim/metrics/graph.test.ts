@@ -206,8 +206,8 @@ describe('Louvain modularity', () => {
       getEdgeWeight: 'weight',
       rng: () => rng.nextFloat(),
     });
-    expect(result.modularity).toBeGreaterThanOrEqual(0.30);
-    expect(result.modularity).toBeLessThanOrEqual(0.40);
+    expect(result.modularity).toBeGreaterThanOrEqual(0.3);
+    expect(result.modularity).toBeLessThanOrEqual(0.4);
   });
 
   it('Louvain modularity is deterministic under a seeded RNG', () => {
@@ -306,9 +306,7 @@ describe('computeSegregationIndex', () => {
   it('returns 0 when immigrants have no inter-immigrant interactions', () => {
     const graph = createInteractionGraph();
     // Only immigrant-native edges
-    updateInteractionGraph(graph, [
-      makeEvent('i1', 'n1', 'W2-Immigrant', 'W2-Native', 'L1', true),
-    ]);
+    updateInteractionGraph(graph, [makeEvent('i1', 'n1', 'W2-Immigrant', 'W2-Native', 'L1', true)]);
     const world2 = makeWorld('world2', [
       makeAgent('i1', 'W2-Immigrant', {}),
       makeAgent('n1', 'W2-Native', {}),
@@ -375,8 +373,8 @@ describe('computeInteractionGraphCommunities', () => {
 
     const result = computeInteractionGraphCommunities(graph, rng);
     expect(result.count).toBe(2);
-    expect(result.modularity).toBeGreaterThanOrEqual(0.30);
-    expect(result.modularity).toBeLessThanOrEqual(0.40);
+    expect(result.modularity).toBeGreaterThanOrEqual(0.3);
+    expect(result.modularity).toBeLessThanOrEqual(0.4);
 
     // Triangle 1 members should all be in the same community
     const commA = result.assignments.get('a' as AgentId);

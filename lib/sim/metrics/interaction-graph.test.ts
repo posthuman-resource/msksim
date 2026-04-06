@@ -9,11 +9,7 @@ import type { InteractionEvent } from '../engine';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-function makeEvent(
-  speakerId: string,
-  hearerId: string,
-  success: boolean,
-): InteractionEvent {
+function makeEvent(speakerId: string, hearerId: string, success: boolean): InteractionEvent {
   return {
     tick: 0,
     worldId: 'world2',
@@ -68,10 +64,7 @@ describe('updateInteractionGraph', () => {
 
   it('mixed batch: only successful interactions land in the graph', () => {
     const graph = createInteractionGraph();
-    updateInteractionGraph(graph, [
-      makeEvent('a', 'b', true),
-      makeEvent('c', 'd', false),
-    ]);
+    updateInteractionGraph(graph, [makeEvent('a', 'b', true), makeEvent('c', 'd', false)]);
     expect(graph.order).toBe(2);
     expect(graph.size).toBe(1);
     expect(graph.hasNode('a')).toBe(true);
@@ -98,10 +91,7 @@ describe('updateInteractionGraph', () => {
 describe('interactionGraphNodeCount / interactionGraphEdgeCount', () => {
   it('returns correct counts', () => {
     const graph = createInteractionGraph();
-    updateInteractionGraph(graph, [
-      makeEvent('x', 'y', true),
-      makeEvent('y', 'z', true),
-    ]);
+    updateInteractionGraph(graph, [makeEvent('x', 'y', true), makeEvent('y', 'z', true)]);
     expect(interactionGraphNodeCount(graph)).toBe(3);
     expect(interactionGraphEdgeCount(graph)).toBe(2);
   });
