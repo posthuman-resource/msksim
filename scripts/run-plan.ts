@@ -453,12 +453,20 @@ function createNdjsonParser(onEvent: (e: StreamEvent) => void) {
       buf = lines.pop() ?? '';
       for (const l of lines) {
         if (!l.trim()) continue;
-        try { onEvent(JSON.parse(l)); } catch { /* partial */ }
+        try {
+          onEvent(JSON.parse(l));
+        } catch {
+          /* partial */
+        }
       }
     },
     flush() {
       if (!buf.trim()) return;
-      try { onEvent(JSON.parse(buf)); } catch { /* partial */ }
+      try {
+        onEvent(JSON.parse(buf));
+      } catch {
+        /* partial */
+      }
       buf = '';
     },
   };
@@ -471,12 +479,20 @@ function trunc(s: string, n: number) {
 function toolSummary(name: string, input?: Record<string, unknown>) {
   if (!input) return '';
   switch (name) {
-    case 'Bash': return trunc((input.command as string) ?? '', 100);
-    case 'Read': case 'Write': case 'Edit': return (input.file_path as string) ?? '';
-    case 'Glob': return (input.pattern as string) ?? '';
-    case 'Grep': return `${(input.pattern as string) ?? ''} ${(input.path as string) ?? ''}`.trim();
-    case 'Agent': return trunc((input.description as string) ?? '', 80);
-    default: return trunc(JSON.stringify(input), 80);
+    case 'Bash':
+      return trunc((input.command as string) ?? '', 100);
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+      return (input.file_path as string) ?? '';
+    case 'Glob':
+      return (input.pattern as string) ?? '';
+    case 'Grep':
+      return `${(input.pattern as string) ?? ''} ${(input.path as string) ?? ''}`.trim();
+    case 'Agent':
+      return trunc((input.description as string) ?? '', 80);
+    default:
+      return trunc(JSON.stringify(input), 80);
   }
 }
 
@@ -485,19 +501,26 @@ function fmtEvent(ev: StreamEvent): string | null {
     return `  [init] model=${ev.model ?? '?'} session=${(ev.session_id as string)?.slice(0, 8) ?? '?'}`;
   }
   if (ev.type === 'assistant') {
-    const content = (ev.message as { content?: { type: string; text?: string; name?: string; input?: Record<string, unknown> }[] })?.content;
+    const content = (
+      ev.message as {
+        content?: { type: string; text?: string; name?: string; input?: Record<string, unknown> }[];
+      }
+    )?.content;
     if (!content) return null;
     const out: string[] = [];
     for (const b of content) {
-      if (b.type === 'text' && b.text) out.push(`  [text] ${trunc(b.text.replace(/\n/g, ' '), 150)}`);
-      if (b.type === 'tool_use' && b.name) out.push(`  [tool] ${b.name}: ${toolSummary(b.name, b.input)}`);
+      if (b.type === 'text' && b.text)
+        out.push(`  [text] ${trunc(b.text.replace(/\n/g, ' '), 150)}`);
+      if (b.type === 'tool_use' && b.name)
+        out.push(`  [tool] ${b.name}: ${toolSummary(b.name, b.input)}`);
     }
     return out.length ? out.join('\n') : null;
   }
   if (ev.type === 'result') {
     const ok = ev.subtype === 'success' && !ev.is_error;
     const cost = typeof ev.total_cost_usd === 'number' ? `$${ev.total_cost_usd.toFixed(2)}` : '$?';
-    const dur = typeof ev.duration_ms === 'number' ? `${(ev.duration_ms / 1000).toFixed(1)}s` : '?s';
+    const dur =
+      typeof ev.duration_ms === 'number' ? `${(ev.duration_ms / 1000).toFixed(1)}s` : '?s';
     let line = `  [${ok ? 'done' : 'FAIL'}] ${ev.num_turns ?? '?'} turns, ${cost}, ${dur}`;
     if (ev.is_error && typeof ev.result === 'string') line += ` — ${trunc(ev.result, 120)}`;
     return line;
@@ -517,8 +540,8 @@ async function spawnClaudeWithLog(
   if (dryRun) {
     process.stdout.write('--- dry run ---\n');
     process.stdout.write(
-      'command: claude -p --dangerously-skip-permissions --effort high'
-      + ' --output-format stream-json --verbose\n',
+      'command: claude -p --dangerously-skip-permissions --effort high' +
+        ' --output-format stream-json --verbose\n',
     );
     process.stdout.write('prompt:\n');
     for (const line of prompt.split('\n')) process.stdout.write(`  ${line}\n`);
@@ -536,9 +559,12 @@ async function spawnClaudeWithLog(
   const proc = spawn(
     'claude',
     [
-      '-p', '--dangerously-skip-permissions',
-      '--effort', 'high',
-      '--output-format', 'stream-json',
+      '-p',
+      '--dangerously-skip-permissions',
+      '--effort',
+      'high',
+      '--output-format',
+      'stream-json',
       '--verbose',
     ],
     {
@@ -596,8 +622,8 @@ async function spawnClaudeWithLog(
     if (eventCount === 0) {
       logStream.write('[run-plan] WARNING: zero stream events before exit\n');
       process.stderr.write(
-        `[run-plan] claude exited (${exitCode}) with zero stream events`
-        + ' — check stderr above or dmesg for OOM\n',
+        `[run-plan] claude exited (${exitCode}) with zero stream events` +
+          ' — check stderr above or dmesg for OOM\n',
       );
     }
     return { exitCode, timedOut, interrupted, resultEvent };
@@ -796,6 +822,8 @@ async function runStep(step: Step, args: CliArgs): Promise<void> {
   let baseUrl: string | null = null;
 
   const env = { ...process.env };
+  // Remove API key so Claude Code uses the subscription plan instead of API billing.
+  delete env.ANTHROPIC_API_KEY;
 
   try {
     if (step.ui && !args.noServer) {
