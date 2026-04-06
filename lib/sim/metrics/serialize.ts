@@ -24,9 +24,7 @@ interface MetricShape {
  * Compute the mean of meanTokenWeight across all languages in a perLanguage record.
  * Mirrors meanOverLanguages in metrics-dashboard.tsx.
  */
-function meanOverLanguages(
-  perLanguage: Record<Language, { meanTokenWeight: number }>,
-): number {
+function meanOverLanguages(perLanguage: Record<Language, { meanTokenWeight: number }>): number {
   const vals = Object.values(perLanguage)
     .map((v) => v.meanTokenWeight)
     .filter((v) => !isNaN(v));
@@ -293,9 +291,10 @@ export function materializeTickReports(
 /**
  * Map classification enum to a human-friendly label with Okabe-Ito color.
  */
-export function formatClassificationLabel(
-  classification: RunClassification | null,
-): { label: string; color: string } {
+export function formatClassificationLabel(classification: RunClassification | null): {
+  label: string;
+  color: string;
+} {
   switch (classification) {
     case 'assimilated':
       return { label: 'Assimilated', color: '#009E73' };

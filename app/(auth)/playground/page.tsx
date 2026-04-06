@@ -14,10 +14,5 @@ export default async function PlaygroundPage({
   await verifySession();
   const params = await searchParams;
 
-  return (
-    <SimulationShell
-      initialConfigId={params.configId}
-      initialSeedParam={params.seed}
-    />
-  );
+  return <SimulationShell initialConfigId={params.configId} initialSeedParam={params.seed} />;
 }

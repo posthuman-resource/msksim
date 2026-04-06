@@ -17,11 +17,7 @@ function formatTimestamp(d: Date | null): string {
   return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 
-export default async function RunDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await verifySession();
   const { id } = await params;
 
@@ -38,7 +34,9 @@ export default async function RunDetailPage({
     ? (JSON.parse(run.summaryJson) as RunSummary)
     : null;
 
-  const cls = formatClassificationLabel(run.classification as Parameters<typeof formatClassificationLabel>[0]);
+  const cls = formatClassificationLabel(
+    run.classification as Parameters<typeof formatClassificationLabel>[0],
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -92,7 +90,10 @@ export default async function RunDetailPage({
       </div>
 
       {/* Summary card */}
-      <RunSummaryCard summary={summary} classification={run.classification as Parameters<typeof formatClassificationLabel>[0]} />
+      <RunSummaryCard
+        summary={summary}
+        classification={run.classification as Parameters<typeof formatClassificationLabel>[0]}
+      />
 
       {/* Metrics dashboard — reused from playground */}
       <div className="rounded-lg bg-white p-6 shadow-sm">

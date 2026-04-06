@@ -171,9 +171,7 @@ export function RunsTable({ rows, configs, activeSort, pagination }: RunsTablePr
                       {cls.label}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs">
-                    {row.finishedAt ?? '-'}
-                  </td>
+                  <td className="px-3 py-2 text-xs">{row.finishedAt ?? '-'}</td>
                   <td className="px-3 py-2 text-xs">
                     {row.durationSeconds != null ? `${row.durationSeconds.toFixed(1)}s` : '-'}
                   </td>
@@ -196,8 +194,8 @@ export function RunsTable({ rows, configs, activeSort, pagination }: RunsTablePr
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm text-zinc-500">
           <span>
-            Showing {pagination.page * 50 + 1}–{Math.min((pagination.page + 1) * 50, pagination.total)} of{' '}
-            {pagination.total}
+            Showing {pagination.page * 50 + 1}–
+            {Math.min((pagination.page + 1) * 50, pagination.total)} of {pagination.total}
           </span>
           <div className="flex gap-2">
             <button

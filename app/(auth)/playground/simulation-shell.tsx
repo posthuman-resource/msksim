@@ -98,9 +98,7 @@ export function SimulationShell({
   // ─── Step 26: run persistence state ─────────────────────────────────────
   const [configId] = useState<string | undefined>(initialConfigId);
   const [configName, setConfigName] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [savedRunId, setSavedRunId] = useState<string | null>(null);
 
   // ─── Step 24: seed, config, hash, tickRate ───────────────────────────────
@@ -564,13 +562,15 @@ export function SimulationShell({
 
         {!configId && (
           <span className="text-xs text-zinc-400">
-            Save a config in <Link href="/experiments" className="text-blue-500 hover:underline">Experiments</Link> to enable run persistence
+            Save a config in{' '}
+            <Link href="/experiments" className="text-blue-500 hover:underline">
+              Experiments
+            </Link>{' '}
+            to enable run persistence
           </span>
         )}
 
-        {saveStatus === 'saving' && (
-          <span className="text-sm text-zinc-500">Saving run...</span>
-        )}
+        {saveStatus === 'saving' && <span className="text-sm text-zinc-500">Saving run...</span>}
         {saveStatus === 'saved' && savedRunId && (
           <span data-testid="run-saved-toast" className="text-sm text-green-700">
             Run saved.{' '}
@@ -582,10 +582,7 @@ export function SimulationShell({
         {saveStatus === 'error' && (
           <span className="text-sm text-red-600">
             Save failed.{' '}
-            <button
-              className="underline"
-              onClick={handleRunToCompletion}
-            >
+            <button className="underline" onClick={handleRunToCompletion}>
               Retry
             </button>
           </span>

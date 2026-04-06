@@ -50,7 +50,9 @@ export function RunSummaryCard({
             <div className="flex items-center gap-2">
               <span className="text-sm text-zinc-500">Time to consensus:</span>
               <span className="text-sm font-medium text-zinc-800">
-                {summary.timeToConsensus !== null ? `Tick ${summary.timeToConsensus}` : 'Not reached'}
+                {summary.timeToConsensus !== null
+                  ? `Tick ${summary.timeToConsensus}`
+                  : 'Not reached'}
               </span>
             </div>
           </>
@@ -72,9 +74,7 @@ export function RunSummaryCard({
         </div>
       )}
 
-      {!summary && (
-        <p className="text-sm text-zinc-500">Summary not available.</p>
-      )}
+      {!summary && <p className="text-sm text-zinc-500">Summary not available.</p>}
     </div>
   );
 }

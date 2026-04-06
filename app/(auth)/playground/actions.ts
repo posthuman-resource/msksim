@@ -21,9 +21,7 @@ export interface PersistRunPayload {
  * Persist a completed simulation run to the database.
  * Opens a single transaction: insert run row → bulk-insert tick_metrics → finalize run.
  */
-export async function persistCompletedRun(
-  payload: PersistRunPayload,
-): Promise<{ runId: string }> {
+export async function persistCompletedRun(payload: PersistRunPayload): Promise<{ runId: string }> {
   const session = await verifySession();
 
   const { configId, seed, tickCount, result } = payload;

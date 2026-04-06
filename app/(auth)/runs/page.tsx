@@ -60,9 +60,7 @@ export default async function RunsPage({
     startedAt: formatTimestamp(r.startedAt) ?? '',
     finishedAt: formatTimestamp(r.finishedAt),
     durationSeconds:
-      r.finishedAt && r.startedAt
-        ? (r.finishedAt.getTime() - r.startedAt.getTime()) / 1000
-        : null,
+      r.finishedAt && r.startedAt ? (r.finishedAt.getTime() - r.startedAt.getTime()) / 1000 : null,
   }));
 
   const configOptions = allConfigs.map((c) => ({ id: c.id, name: c.name }));

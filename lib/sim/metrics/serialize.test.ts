@@ -9,7 +9,10 @@ import type { TickReport } from '@/workers/simulation.worker';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeReport(tick: number, overrides?: Partial<{ assimilation: number | null }>): TickReport {
+function makeReport(
+  tick: number,
+  overrides?: Partial<{ assimilation: number | null }>,
+): TickReport {
   const rate = 0.5 + tick * 0.01;
   return {
     tick,
@@ -122,9 +125,7 @@ describe('serializeTickReportsToMetricRows skips invalid values', () => {
     expect(infRows.length).toBe(0);
 
     // No rows for null assimilation_index at tick 0
-    const nullRows = rows.filter(
-      (r) => r.tick === 0 && r.metricName === 'assimilation_index',
-    );
+    const nullRows = rows.filter((r) => r.tick === 0 && r.metricName === 'assimilation_index');
     expect(nullRows.length).toBe(0);
 
     // Other metrics at tick 0 are still present
