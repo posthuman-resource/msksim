@@ -36,10 +36,10 @@ export function ConfigEditor({
   initialName = '',
   initialValues,
 }: ConfigEditorProps) {
-  const [state, formAction, isPending] = useActionState<SaveState, FormData>(
-    saveConfigAction,
-    { ok: false, fieldErrors: {} },
-  );
+  const [state, formAction, isPending] = useActionState<SaveState, FormData>(saveConfigAction, {
+    ok: false,
+    fieldErrors: {},
+  });
 
   // zodResolver returns Resolver<z.input<Schema>> but useForm<FormValues> needs Resolver<FormValues>.
   // In Zod 4 the input type (with .default() fields optional) differs from the output type
@@ -71,12 +71,8 @@ export function ConfigEditor({
   const [vocabSeed2, setVocabSeed2] = useState(() =>
     JSON.stringify(initialValues.world2.vocabularySeed, null, 2),
   );
-  const [referents1, setReferents1] = useState(() =>
-    initialValues.world1.referents.join(', '),
-  );
-  const [referents2, setReferents2] = useState(() =>
-    initialValues.world2.referents.join(', '),
-  );
+  const [referents1, setReferents1] = useState(() => initialValues.world1.referents.join(', '));
+  const [referents2, setReferents2] = useState(() => initialValues.world2.referents.join(', '));
 
   // Surface server-side errors inline in the same slots as client-side errors
   useEffect(() => {
@@ -169,9 +165,7 @@ export function ConfigEditor({
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           placeholder="e.g., Baseline 20×20 Lattice"
         />
-        {errors.name && (
-          <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
-        )}
+        {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
       </div>
 
       {/* World configs */}
@@ -714,8 +708,9 @@ function WorldSection({
           />
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {(worldErrors as any)?.vocabularySeed && (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <p className="mt-0.5 text-xs text-red-600">{(worldErrors as any).vocabularySeed?.message}</p>
+            <p className="mt-0.5 text-xs text-red-600">
+              {(worldErrors as any).vocabularySeed?.message}
+            </p>
           )}
         </div>
       </div>
@@ -736,11 +731,13 @@ interface NumberFieldProps {
 
 function NumberField({ label, path, form, min, max, step }: NumberFieldProps) {
   // Traverse the errors tree by dot-path to find the error for this field
-  const error = path.split('.').reduce(
-    (obj: unknown, key: string) =>
-      obj && typeof obj === 'object' ? (obj as Record<string, unknown>)[key] : undefined,
-    form.formState.errors as unknown,
-  ) as { message?: string } | undefined;
+  const error = path
+    .split('.')
+    .reduce(
+      (obj: unknown, key: string) =>
+        obj && typeof obj === 'object' ? (obj as Record<string, unknown>)[key] : undefined,
+      form.formState.errors as unknown,
+    ) as { message?: string } | undefined;
 
   return (
     <div>

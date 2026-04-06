@@ -40,7 +40,9 @@ describe('exportFilename', () => {
   });
 
   it('sanitizes the name portion', () => {
-    expect(exportFilename('Baseline Test /v1', 'abc12345efg')).toBe('Baseline-Test-v1-abc12345.json');
+    expect(exportFilename('Baseline Test /v1', 'abc12345efg')).toBe(
+      'Baseline-Test-v1-abc12345.json',
+    );
   });
 });
 

@@ -42,9 +42,7 @@ export function ConfigListItem({ config }: ConfigListItemProps) {
             Edit
           </Link>
 
-          <form
-            action={duplicateConfigAction.bind(null, config.id)}
-          >
+          <form action={duplicateConfigAction.bind(null, config.id)}>
             <button
               type="submit"
               className="rounded px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100"
