@@ -22,3 +22,22 @@ export { updateWeight } from './engine/weight-update';
 export { cosineSimilarity, topKTokenVector, type TokenVector } from './similarity';
 export { preferentialSelectPartner, softmaxWithTemperature } from './preferential-attachment';
 export { createPartnerSelector, type PartnerSelectorFn } from './partner-selector';
+
+// Step 15: scalar metrics public API
+export type {
+  ClassPairKey,
+  PerLanguageScalarMetrics,
+  PerWorldScalarMetrics,
+  ScalarMetricsSnapshot,
+  SuccessRate,
+  SuccessRateByClassPair,
+} from './metrics/types';
+export {
+  computeCommunicationSuccessRate,
+  computeDistinctActiveTokens,
+  computeMatchingRate,
+  computeMeanTokenWeight,
+  computeScalarMetrics,
+  computeSuccessRateByClassPair,
+  computeTokenWeightVariance,
+} from './metrics/scalar';
