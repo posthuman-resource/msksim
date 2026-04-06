@@ -89,6 +89,31 @@ export async function listConfigs(opts?: {
 }
 
 /**
+ * Update an existing config row with a new name and/or config content.
+ * Re-canonicalizes the config and recomputes SHA-256 so content_hash stays accurate.
+ * The updatedAt timestamp is bumped via the column's $onUpdateFn hook.
+ * Returns the updated row, or null if the id was not found.
+ */
+export async function updateConfig({
+  id,
+  name,
+  config,
+}: {
+  id: string;
+  name: string;
+  config: ExperimentConfig;
+}): Promise<Config | null> {
+  const canonical = JSON.stringify(canonicalize(config));
+  const contentHash = createHash('sha256').update(canonical).digest('hex');
+  const rows = await db
+    .update(configs)
+    .set({ contentJson: canonical, contentHash, name })
+    .where(eq(configs.id, id))
+    .returning();
+  return rows[0] ?? null;
+}
+
+/**
  * Delete a config by id.
  * Cascades to runs, tick_metrics, and snapshots via FK.
  *
