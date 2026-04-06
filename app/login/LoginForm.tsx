@@ -39,7 +39,7 @@ export default function LoginForm({ next }: LoginFormProps) {
           autoComplete="username"
           required
           aria-describedby={hasError ? 'login-error' : undefined}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </div>
 
@@ -54,7 +54,7 @@ export default function LoginForm({ next }: LoginFormProps) {
           autoComplete="current-password"
           required
           aria-describedby={hasError ? 'login-error' : undefined}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </div>
 

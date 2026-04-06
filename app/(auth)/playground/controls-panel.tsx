@@ -178,14 +178,14 @@ export function ControlsPanel({
         >
           Reset
         </button>
-        <span data-testid="tick-counter" className="ml-2 text-sm text-gray-400">
+        <span data-testid="tick-counter" className="ml-2 text-sm text-gray-200">
           Tick: {tick}
         </span>
       </div>
 
       {/* Tick-rate row */}
       <div className="flex items-center gap-2">
-        <label htmlFor="tick-rate-select" className="text-sm text-gray-400">
+        <label htmlFor="tick-rate-select" className="text-sm text-gray-200">
           Speed:
         </label>
         <select
@@ -200,13 +200,13 @@ export function ControlsPanel({
           <option value={100}>100×</option>
           <option value={1000}>1000×</option>
         </select>
-        <span className="text-xs text-gray-500">ticks/frame</span>
+        <span className="text-xs text-gray-400">ticks/frame</span>
       </div>
 
       {/* Seed row + reproducibility banner */}
       <div className="flex flex-wrap items-start gap-2">
         <div className="flex items-center gap-2">
-          <label htmlFor="seed-input" className="text-sm text-gray-400">
+          <label htmlFor="seed-input" className="text-sm text-gray-200">
             Seed:
           </label>
           <input
@@ -233,7 +233,7 @@ export function ControlsPanel({
         </div>
         <div
           data-testid="config-hash-display"
-          className="rounded bg-slate-900 px-2 py-1 font-mono text-xs text-gray-400"
+          className="rounded bg-slate-900 px-2 py-1 font-mono text-xs text-gray-300"
         >
           seed={seed} config={configHashShort}
         </div>
@@ -245,7 +245,7 @@ export function ControlsPanel({
         {/* Δ⁺ (deltaPositive) — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-400">Δ⁺ (weight on success)</label>
+            <label className="text-xs text-gray-200">Δ⁺ (weight on success)</label>
             <span data-testid="delta-plus-value" className="text-xs font-mono text-gray-300">
               {deltaPlusDraft.toFixed(2)}
             </span>
@@ -264,7 +264,7 @@ export function ControlsPanel({
         {/* Δ⁻ (deltaNegative) — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-400">Δ⁻ (weight on failure)</label>
+            <label className="text-xs text-gray-200">Δ⁻ (weight on failure)</label>
             <span data-testid="delta-minus-value" className="text-xs font-mono text-gray-300">
               {deltaMinusDraft.toFixed(2)}
             </span>
@@ -283,7 +283,7 @@ export function ControlsPanel({
         {/* Interaction probability — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-400">Interaction probability</label>
+            <label className="text-xs text-gray-200">Interaction probability</label>
             <span
               data-testid="interaction-probability-value"
               className="text-xs font-mono text-gray-300"
@@ -305,7 +305,7 @@ export function ControlsPanel({
         {/* Pref. attachment temperature — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-400">Pref. attachment temp.</label>
+            <label className="text-xs text-gray-200">Pref. attachment temp.</label>
             <span data-testid="prefattach-temp-value" className="text-xs font-mono text-gray-300">
               {prefTempDraft.toFixed(2)}
             </span>
@@ -324,7 +324,7 @@ export function ControlsPanel({
         {/* Mono/bi ratio — reset-required */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-400">
+            <label className="text-xs text-gray-200">
               Mono:Bi ratio{' '}
               <span className="text-yellow-500" title="Changing this will reset the run">
                 ↺
@@ -343,7 +343,7 @@ export function ControlsPanel({
             onChange={(e) => setRatioDraft(Number(e.target.value))}
             className="w-full accent-yellow-500"
           />
-          <p className="text-xs text-yellow-600">Changing this will reset the run</p>
+          <p className="text-xs text-yellow-400">Changing this will reset the run</p>
         </div>
       </div>
     </div>
