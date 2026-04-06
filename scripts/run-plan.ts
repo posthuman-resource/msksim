@@ -413,6 +413,11 @@ function buildPrompt(step: Step, baseUrl: string | null): string {
   lines.push(`  step ${step.number}: ${step.title}`);
   lines.push('');
   lines.push(
+    'Before committing, run `npm run format` to ensure consistent formatting. ' +
+      'This prevents the post-session formatter from dirtying the tree.',
+  );
+  lines.push('');
+  lines.push(
     'If you learn new conventions or discover anything that future agents should know, ' +
       'append to the appropriate section of CLAUDE.md (respect the section line caps ' +
       'and the ≤ 30 lines per section per commit rule). Do NOT edit sections outside ' +
@@ -869,6 +874,13 @@ async function runStep(step: Step, args: CliArgs): Promise<void> {
 
   verifyAndNormalizeCommit(step, baselineSha);
   runPostStepGates(step);
+
+  // Auto-clean formatter residue (e.g. from Stop hook or missed pre-commit formatting)
+  if (!workingTreeIsClean()) {
+    process.stdout.write('[run-plan] formatting residue detected; amending step commit\n');
+    git('add', '-A');
+    git('commit', '--amend', '--no-edit');
+  }
 
   process.stdout.write(`[run-plan] <<< step ${step.number} complete\n`);
 }

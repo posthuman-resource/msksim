@@ -47,6 +47,8 @@ Research instrument for Meissa and Mike: agent-based Naming Game simulation stud
 
 Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: conventional (`feat:`, `fix:`, `chore:`). `run-plan.ts` squashes intermediate commits.
 
+- **Pre-commit formatting**: Always run `npm run format` before the final commit. `run-plan.ts` enforces this as a safety net.
+
 ## Database access patterns
 
 - Every `lib/db/` file and `lib/env.ts` starts with `import 'server-only'` (non-negotiable).
