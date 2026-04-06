@@ -10,9 +10,9 @@
 // All other pairs are handled by "always-l1" or "always-l2" fallthrough rules
 // recorded in the defaultLanguagePolicies matrix (lib/schema/defaults.ts).
 
-import type { Language } from "@/lib/schema/primitives";
-import type { LanguagePolicyEntry } from "@/lib/schema/policy";
-import type { LanguagePolicy, PolicyConfig } from "../policy";
+import type { Language } from '@/lib/schema/primitives';
+import type { LanguagePolicyEntry } from '@/lib/schema/policy';
+import type { LanguagePolicy, PolicyConfig } from '../policy';
 
 /**
  * Build a LanguagePolicy from the per-pair entries in `config`.
@@ -65,18 +65,18 @@ function makeRulePolicy(
   l2Label: Language,
 ): LanguagePolicy {
   switch (entry.ruleId) {
-    case "always-l1":
-    case "w1bi-to-w1mono-always-l1":
+    case 'always-l1':
+    case 'w1bi-to-w1mono-always-l1':
       // Deterministic: no RNG touch.
       return () => l1Label;
 
-    case "always-l2":
+    case 'always-l2':
       // Deterministic: no RNG touch.
       return () => l2Label;
 
-    case "w1bi-to-w1bi-configurable":
-    case "w2imm-to-w2native-both":
-    case "w2imm-to-w2imm-both": {
+    case 'w1bi-to-w1bi-configurable':
+    case 'w2imm-to-w2native-both':
+    case 'w2imm-to-w2imm-both': {
       // Biased coin flip. L1 probability = languageBias.L1; default 0.5.
       // The schema comment states biases must sum to 1; we use L1 directly
       // as the probability rather than normalising to avoid extra arithmetic

@@ -1,23 +1,19 @@
-import { describe, it, expect } from "vitest";
-import { softmaxWithTemperature, preferentialSelectPartner } from "./preferential-attachment";
-import { createPartnerSelector } from "./partner-selector";
-import { createRNG } from "./rng";
-import { emptyInventory, inventorySet, makeAgentId } from "./types";
-import type { AgentState, Inventory } from "./types";
-import type { PreferentialAttachmentConfig } from "@/lib/schema/preferential";
-import { ExperimentConfig } from "@/lib/schema/experiment";
+import { describe, it, expect } from 'vitest';
+import { softmaxWithTemperature, preferentialSelectPartner } from './preferential-attachment';
+import { createPartnerSelector } from './partner-selector';
+import { createRNG } from './rng';
+import { emptyInventory, inventorySet, makeAgentId } from './types';
+import type { AgentState, Inventory } from './types';
+import type { PreferentialAttachmentConfig } from '@/lib/schema/preferential';
+import { ExperimentConfig } from '@/lib/schema/experiment';
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
 /** Build a minimal AgentState for testing (no interactionMemory). */
-function makeAgent(
-  id: string,
-  position: number,
-  inventory: Inventory,
-): AgentState {
+function makeAgent(id: string, position: number, inventory: Inventory): AgentState {
   return {
     id: makeAgentId(id),
-    class: "W1-Mono",
+    class: 'W1-Mono',
     position,
     inventory,
     interactionMemory: [],
@@ -43,12 +39,14 @@ function inv(language: string, referent: string, tokens: Record<string, number>)
  * Default PA config for tests: preferential attachment on, no warm-up.
  * Tests that need warm-up or disabled pass their own config.
  */
-function paConfig(overrides: Partial<PreferentialAttachmentConfig> = {}): PreferentialAttachmentConfig {
+function paConfig(
+  overrides: Partial<PreferentialAttachmentConfig> = {},
+): PreferentialAttachmentConfig {
   return {
     enabled: true,
     warmUpTicks: 0,
     temperature: 1.0,
-    similarityMetric: "cosine",
+    similarityMetric: 'cosine',
     topK: 10,
     ...overrides,
   };
@@ -56,9 +54,9 @@ function paConfig(overrides: Partial<PreferentialAttachmentConfig> = {}): Prefer
 
 // ─── softmaxWithTemperature tests ─────────────────────────────────────────────
 
-describe("softmaxWithTemperature", () => {
+describe('softmaxWithTemperature', () => {
   // Test 1: output sums to 1
-  it("output sums to 1.0 for various temperatures", () => {
+  it('output sums to 1.0 for various temperatures', () => {
     const scores = [1, 2, 3];
     for (const temperature of [0.1, 1.0, 10.0]) {
       const result = softmaxWithTemperature(scores, temperature);
@@ -68,7 +66,7 @@ describe("softmaxWithTemperature", () => {
   });
 
   // Test 2: all outputs are non-negative
-  it("all output values are >= 0", () => {
+  it('all output values are >= 0', () => {
     const result = softmaxWithTemperature([1, 2, 3], 1.0);
     for (const p of result) {
       expect(p).toBeGreaterThanOrEqual(0);
@@ -76,7 +74,7 @@ describe("softmaxWithTemperature", () => {
   });
 
   // Test 3: low temperature → delta on max (numerical stability check)
-  it("T=0.001 approaches delta on max — stable (no Infinity)", () => {
+  it('T=0.001 approaches delta on max — stable (no Infinity)', () => {
     const scores = [1, 2, 3];
     const result = softmaxWithTemperature(scores, 0.001);
     // Third entry (score=3) should dominate
@@ -90,7 +88,7 @@ describe("softmaxWithTemperature", () => {
   });
 
   // Test 4: high temperature → approaches uniform
-  it("T=1000 approaches uniform distribution", () => {
+  it('T=1000 approaches uniform distribution', () => {
     const scores = [1, 2, 3];
     const result = softmaxWithTemperature(scores, 1000.0);
     const target = 1 / 3;
@@ -100,18 +98,18 @@ describe("softmaxWithTemperature", () => {
   });
 
   // Throws on invalid temperature
-  it("throws RangeError for temperature <= 0", () => {
+  it('throws RangeError for temperature <= 0', () => {
     expect(() => softmaxWithTemperature([1, 2], 0)).toThrow(RangeError);
     expect(() => softmaxWithTemperature([1, 2], -1)).toThrow(RangeError);
   });
 
   // Returns [] for empty input
-  it("returns [] for empty scores array", () => {
+  it('returns [] for empty scores array', () => {
     expect(softmaxWithTemperature([], 1.0)).toEqual([]);
   });
 
   // Test 12 (sanity check): known numerical values at T=1.0
-  it("produces expected probabilities for scores [1.0, 0.5, 0.0] at T=1.0", () => {
+  it('produces expected probabilities for scores [1.0, 0.5, 0.0] at T=1.0', () => {
     // Manual: exp([1, 0.5, 0]) / sum = [e, sqrt(e), 1] / (e + sqrt(e) + 1)
     // e ≈ 2.71828, sqrt(e) ≈ 1.64872, 1 ≈ 1
     // total ≈ 5.367
@@ -125,25 +123,25 @@ describe("softmaxWithTemperature", () => {
 
 // ─── preferentialSelectPartner tests ─────────────────────────────────────────
 
-describe("preferentialSelectPartner", () => {
-  const speakerInv = inv("L1", "ref", { yellow: 1.0, red: 1.0 });
-  const identicalInv = inv("L1", "ref", { yellow: 1.0, red: 1.0 });
-  const orthogonalInv = inv("L2", "ref", { jaune: 1.0, rouge: 1.0 });
+describe('preferentialSelectPartner', () => {
+  const speakerInv = inv('L1', 'ref', { yellow: 1.0, red: 1.0 });
+  const identicalInv = inv('L1', 'ref', { yellow: 1.0, red: 1.0 });
+  const orthogonalInv = inv('L2', 'ref', { jaune: 1.0, rouge: 1.0 });
 
-  const speaker = makeAgent("speaker", 0, speakerInv);
-  const candA = makeAgent("candA", 1, identicalInv);
-  const candB = makeAgent("candB", 2, identicalInv);
-  const candC = makeAgent("candC", 3, orthogonalInv);
+  const speaker = makeAgent('speaker', 0, speakerInv);
+  const candA = makeAgent('candA', 1, identicalInv);
+  const candB = makeAgent('candB', 2, identicalInv);
+  const candC = makeAgent('candC', 3, orthogonalInv);
 
   // Test 9: empty candidate list → null
-  it("empty candidates → null", () => {
+  it('empty candidates → null', () => {
     const rng = createRNG(1);
     const result = preferentialSelectPartner(speaker, [], rng, paConfig(), 0);
     expect(result).toBeNull();
   });
 
   // Test 5 (warm-up part): during warm-up yields approximately uniform selection
-  it("warm-up period: ticks < warmUpTicks → approximately uniform selection", () => {
+  it('warm-up period: ticks < warmUpTicks → approximately uniform selection', () => {
     const cfg = paConfig({ warmUpTicks: 10 });
     const candidates = [candA, candB, candC];
     const counts = { candA: 0, candB: 0, candC: 0 };
@@ -166,7 +164,7 @@ describe("preferentialSelectPartner", () => {
   });
 
   // Test 7: statistical preference for similar candidates (1000-trial test)
-  it("after warm-up: identical-inventory candidates are preferentially selected", () => {
+  it('after warm-up: identical-inventory candidates are preferentially selected', () => {
     // Speaker: L1:yellow=1, L1:red=1
     // candA, candB: cosine=1.0 vs speaker
     // candC: cosine=0.0 vs speaker (orthogonal keys)
@@ -195,7 +193,7 @@ describe("preferentialSelectPartner", () => {
   });
 
   // Test 8: determinism — same RNG seed + same candidates → same selections
-  it("determinism: two createRNG(42) instances produce identical selections", () => {
+  it('determinism: two createRNG(42) instances produce identical selections', () => {
     const cfg = paConfig({ warmUpTicks: 0 });
     const candidates = [candA, candB, candC];
 
@@ -215,10 +213,10 @@ describe("preferentialSelectPartner", () => {
   });
 
   // Test 11: zero-weight speaker inventory → effectively uniform selection
-  it("zero-weight speaker inventory → approximately uniform selection", () => {
+  it('zero-weight speaker inventory → approximately uniform selection', () => {
     // Speaker with no learned preferences: all cosine similarities = 0,
     // softmax collapses to uniform.
-    const emptySpk = makeAgent("empty-speaker", 0, emptyInventory());
+    const emptySpk = makeAgent('empty-speaker', 0, emptyInventory());
     const cfg = paConfig({ warmUpTicks: 0 });
     const candidates = [candA, candB, candC];
     const counts = { candA: 0, candB: 0, candC: 0 };
@@ -243,34 +241,34 @@ describe("preferentialSelectPartner", () => {
 
 // ─── createPartnerSelector tests ──────────────────────────────────────────────
 
-describe("createPartnerSelector", () => {
+describe('createPartnerSelector', () => {
   // Build a minimal World for the selector tests.
   // Uses a mock topology that returns a fixed neighbor list.
-  const speaker = makeAgent("speaker", 0, inv("L1", "ref", { yellow: 1.0 }));
-  const candA = makeAgent("candA", 1, inv("L1", "ref", { yellow: 1.0 }));
-  const candB = makeAgent("candB", 2, inv("L2", "ref", { jaune: 1.0 }));
+  const speaker = makeAgent('speaker', 0, inv('L1', 'ref', { yellow: 1.0 }));
+  const candA = makeAgent('candA', 1, inv('L1', 'ref', { yellow: 1.0 }));
+  const candB = makeAgent('candB', 2, inv('L2', 'ref', { jaune: 1.0 }));
 
   function makeWorld(agents: AgentState[], neighborPositions: number[]) {
     return {
-      id: "world1" as const,
+      id: 'world1' as const,
       agents,
       topology: {
-        kind: "well-mixed" as const,
+        kind: 'well-mixed' as const,
         size: agents.length,
         neighbors: () => neighborPositions,
         pickNeighbor: (pos: number, rng: ReturnType<typeof createRNG>) =>
           rng.pick(neighborPositions),
         adjacency: () => [],
       },
-      referents: ["ref"] as Parameters<typeof inventorySet>[2][],
-      languages: ["L1"] as Parameters<typeof inventorySet>[1][],
+      referents: ['ref'] as Parameters<typeof inventorySet>[2][],
+      languages: ['L1'] as Parameters<typeof inventorySet>[1][],
     };
   }
 
   const world = makeWorld([speaker, candA, candB], [1, 2]);
 
   // Test 6: enabled:false → uniform selection (ablation toggle)
-  it("enabled:false → approximately uniform selection", () => {
+  it('enabled:false → approximately uniform selection', () => {
     const config = ExperimentConfig.parse({
       preferentialAttachment: {
         enabled: false,
@@ -278,8 +276,8 @@ describe("createPartnerSelector", () => {
         temperature: 1.0,
         topK: 10,
       },
-      world1: { agentCount: 3, topology: { type: "well-mixed" } },
-      world2: { agentCount: 2, topology: { type: "well-mixed" } },
+      world1: { agentCount: 3, topology: { type: 'well-mixed' } },
+      world2: { agentCount: 2, topology: { type: 'well-mixed' } },
     });
 
     let candACount = 0;
@@ -301,11 +299,11 @@ describe("createPartnerSelector", () => {
   });
 
   // Test 10: disabled path never reads speaker.inventory
-  it("enabled:false never reads speaker.inventory (fast path verification)", () => {
+  it('enabled:false never reads speaker.inventory (fast path verification)', () => {
     const config = ExperimentConfig.parse({
       preferentialAttachment: { enabled: false, warmUpTicks: 0, temperature: 1.0, topK: 10 },
-      world1: { agentCount: 3, topology: { type: "well-mixed" } },
-      world2: { agentCount: 2, topology: { type: "well-mixed" } },
+      world1: { agentCount: 3, topology: { type: 'well-mixed' } },
+      world2: { agentCount: 2, topology: { type: 'well-mixed' } },
     });
 
     let inventoryAccessCount = 0;
@@ -326,12 +324,12 @@ describe("createPartnerSelector", () => {
   });
 
   // Test 9 (via createPartnerSelector): empty candidates → null
-  it("returns null when all topology neighbors are empty cells", () => {
+  it('returns null when all topology neighbors are empty cells', () => {
     const emptyWorld = makeWorld([speaker], []); // no neighbors
     const config = ExperimentConfig.parse({
       preferentialAttachment: { enabled: true, warmUpTicks: 0, temperature: 1.0, topK: 10 },
-      world1: { agentCount: 1, topology: { type: "well-mixed" } },
-      world2: { agentCount: 2, topology: { type: "well-mixed" } },
+      world1: { agentCount: 1, topology: { type: 'well-mixed' } },
+      world2: { agentCount: 2, topology: { type: 'well-mixed' } },
     });
 
     const selectPartner = createPartnerSelector(config, 0);
@@ -340,11 +338,11 @@ describe("createPartnerSelector", () => {
   });
 
   // Test 5 transition: selector after warmUpTicks biases toward similar candidates
-  it("enabled:true after warmUpTicks: biases toward similar candidate", () => {
+  it('enabled:true after warmUpTicks: biases toward similar candidate', () => {
     const config = ExperimentConfig.parse({
       preferentialAttachment: { enabled: true, warmUpTicks: 10, temperature: 1.0, topK: 10 },
-      world1: { agentCount: 3, topology: { type: "well-mixed" } },
-      world2: { agentCount: 2, topology: { type: "well-mixed" } },
+      world1: { agentCount: 3, topology: { type: 'well-mixed' } },
+      world2: { agentCount: 2, topology: { type: 'well-mixed' } },
     });
 
     // Speaker has L1:yellow; candA has L1:yellow (similar), candB has L2:jaune (orthogonal)

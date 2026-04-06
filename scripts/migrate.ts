@@ -21,9 +21,9 @@ async function main() {
   // Count applied migrations by querying the tracking table.
   let count = 0;
   try {
-    const rows = sqlite
-      .prepare('SELECT COUNT(*) as n FROM __drizzle_migrations')
-      .get() as { n: number };
+    const rows = sqlite.prepare('SELECT COUNT(*) as n FROM __drizzle_migrations').get() as {
+      n: number;
+    };
     count = rows.n;
   } catch {
     // __drizzle_migrations table may not exist if no migrations have run yet.
@@ -35,7 +35,9 @@ async function main() {
   console.log(`database: ${dbPath}`);
 }
 
-main().then(() => process.exit(0)).catch((err) => {
-  console.error('Migration failed:', err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('Migration failed:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });

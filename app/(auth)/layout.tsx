@@ -14,11 +14,7 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/dal';
 import { logoutAction } from './actions';
 
-export default async function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   // verifySession() is called inside getCurrentUser(). Both are wrapped in
   // React's cache() so if a child page also calls verifySession(), there is
   // only one DB round-trip per render pass.
@@ -27,10 +23,7 @@ export default async function AuthLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-3">
-        <Link
-          href="/"
-          className="text-lg font-bold text-zinc-900 hover:text-zinc-600"
-        >
+        <Link href="/" className="text-lg font-bold text-zinc-900 hover:text-zinc-600">
           msksim
         </Link>
         <div className="flex items-center gap-4">
@@ -46,10 +39,7 @@ export default async function AuthLayout({
         </div>
       </header>
 
-      <nav
-        aria-label="primary"
-        className="flex gap-6 border-b border-zinc-100 bg-white px-6 py-2"
-      >
+      <nav aria-label="primary" className="flex gap-6 border-b border-zinc-100 bg-white px-6 py-2">
         <Link
           href="/playground"
           className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline"
@@ -62,10 +52,7 @@ export default async function AuthLayout({
         >
           Experiments
         </Link>
-        <Link
-          href="/runs"
-          className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline"
-        >
+        <Link href="/runs" className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline">
           Runs
         </Link>
       </nav>

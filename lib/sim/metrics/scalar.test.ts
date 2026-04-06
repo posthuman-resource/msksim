@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentClass, AgentId, Language, Referent, TokenLexeme } from '@/lib/sim/types';
-import {
-  emptyInventory,
-  inventorySet,
-  makeAgentId,
-} from '@/lib/sim/types';
+import { emptyInventory, inventorySet, makeAgentId } from '@/lib/sim/types';
 import type { AgentState, Inventory } from '@/lib/sim/types';
 import type { World, WorldId } from '@/lib/sim/world';
 import type { Topology } from '@/lib/sim/topology';
@@ -84,7 +80,18 @@ function makeEvent(
   referent: Referent = yellowRef,
   token: TokenLexeme = yellowLex,
 ): InteractionEvent {
-  return { tick: 0, worldId, speakerId, hearerId, language, referent, token, success };
+  return {
+    tick: 0,
+    worldId,
+    speakerId,
+    hearerId,
+    speakerClass: 'W1-Mono',
+    hearerClass: 'W1-Mono',
+    language,
+    referent,
+    token,
+    success,
+  };
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -216,7 +223,12 @@ describe('computeMeanTokenWeight / computeTokenWeightVariance', () => {
     expect(computeTokenWeightVariance(world, L2)).toBeNaN();
 
     // Single-agent world: fewer than 2 observations → NaN
-    const singleWorld = makeWorld('world1', [makeAgent('s1', 'W1-Mono', inv1, 0)], [L1], [yellowRef]);
+    const singleWorld = makeWorld(
+      'world1',
+      [makeAgent('s1', 'W1-Mono', inv1, 0)],
+      [L1],
+      [yellowRef],
+    );
     expect(computeTokenWeightVariance(singleWorld, L1)).toBeNaN();
   });
 });
@@ -248,10 +260,7 @@ describe('computeDistinctActiveTokens', () => {
     const base = makeTenAgentWorld();
     // Clone the agents array; give agent 0 an extra (L1, goldenrod) token.
     const newInv = inventorySet(base.agents[0].inventory, L1, yellowRef, goldenrodLex, 0.5);
-    const newAgents = [
-      makeAgent(base.agents[0].id, 'W1-Mono', newInv, 0),
-      ...base.agents.slice(1),
-    ];
+    const newAgents = [makeAgent(base.agents[0].id, 'W1-Mono', newInv, 0), ...base.agents.slice(1)];
     const newWorld = makeWorld('world1', newAgents, [L1], [yellowRef, redRef]);
     expect(computeDistinctActiveTokens(newWorld)).toBe(3);
   });
@@ -326,9 +335,7 @@ describe('computeMatchingRate', () => {
 
 describe('computeScalarMetrics', () => {
   function makeSimpleWorld(worldId: WorldId, agentCount: number): World {
-    const inv = makeInv([
-      [L1, yellowRef, yellowLex, 1.0],
-    ]);
+    const inv = makeInv([[L1, yellowRef, yellowLex, 1.0]]);
     const agents = Array.from({ length: agentCount }, (_, i) =>
       makeAgent(`${worldId}-${i}`, 'W1-Mono', inv, i),
     );

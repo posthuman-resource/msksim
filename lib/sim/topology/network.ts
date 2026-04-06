@@ -3,9 +3,9 @@
 // This v1 stub works end-to-end on a manually supplied adjacency map via the
 // static fromAdjacencyMap() factory, which is all that steps 11–18 require.
 
-import Graph from "graphology";
-import type { RNG } from "../rng";
-import type { Topology, TopologyKind } from "../topology";
+import Graph from 'graphology';
+import type { RNG } from '../rng';
+import type { Topology, TopologyKind } from '../topology';
 
 /**
  * Network topology backed by a graphology Graph.
@@ -15,7 +15,7 @@ import type { Topology, TopologyKind } from "../topology";
  * unit tests and step-11 bootstrap tests.
  */
 export class NetworkTopology implements Topology {
-  readonly kind: TopologyKind = "network";
+  readonly kind: TopologyKind = 'network';
   readonly size: number;
 
   private readonly graph: Graph;
@@ -49,7 +49,7 @@ export class NetworkTopology implements Topology {
    * Duplicate edges and self-loops are silently skipped.
    */
   static fromAdjacencyMap(adj: Map<number, number[]>): NetworkTopology {
-    const graph = new Graph({ type: "undirected", multi: false });
+    const graph = new Graph({ type: 'undirected', multi: false });
 
     for (const node of adj.keys()) {
       graph.addNode(node.toString());

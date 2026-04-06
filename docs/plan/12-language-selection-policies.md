@@ -1,13 +1,13 @@
 ---
-step: "12"
-title: "language selection policies"
+step: '12'
+title: 'language selection policies'
 kind: sim-core
 ui: false
 timeout_minutes: 20
 prerequisites:
-  - "step 01: zod config schema"
-  - "step 09: seeded rng and core types"
-  - "step 11: agent bootstrapping"
+  - 'step 01: zod config schema'
+  - 'step 09: seeded rng and core types'
+  - 'step 11: agent bootstrapping'
 ---
 
 ## 1. Goal
@@ -25,7 +25,7 @@ Implement **F5 (Language-selection policy)** from `docs/spec.md` as a small, plu
 
 - `docs/spec.md` **§3.3 step 2 (Language selection)** — the authoritative statement of the four PDF rules:
   > "W1-Bi speaking to W1-Mono → always L1. W1-Bi speaking to W1-Bi → either language (configurable bias). W2-Immigrant speaking to W2-Native → both languages possible (configurable bias). W2-Immigrant speaking to W2-Immigrant → both languages possible. W1-Mono and W2-Native only know L1 and L2 respectively and always use them."
-  These are the exact behaviors the **default** policy must reproduce; step 12 is "how these words become code."
+  > These are the exact behaviors the **default** policy must reproduce; step 12 is "how these words become code."
 - `docs/spec.md` **§3.5 (Ambiguities)** — the opaque-symbol decision: `Language` is an opaque string at runtime (`"L1"`, `"L2"` are default labels but the user can rename them). Step 12 therefore **never hardcodes the strings `"L1"` or `"L2"`**; it looks up the language labels from the `PolicyConfig` (which step 01 ultimately seeds from the world's `referents`/`vocabularySeed` defaults). If step 01's schema does not already expose explicit `l1Label`/`l2Label` fields, step 12 adds them to its own input type (`PolicyConfig`) and pulls the defaults from `defaultExperimentConfig`.
 - `docs/spec.md` **F5 (Language-selection policy)** — the acceptance criterion: "The default policy set reproduces the PDF's stated rules; researchers can swap in alternative policies via the configuration UI." Step 12's registry (`lib/sim/policy/registry.ts`) is the swap-in surface the UI drives through step 24's slider/dropdown.
 - `docs/spec.md` **§1.2 RQ5 — Linguistic pressure quantified** — "How much does the choice of language used by bilinguals under linguistic pressure shift the assimilation/segregation outcome?" The biased-coin-flip defaults and the alternative policies (`always-l1`, `always-l2`, `mirror-hearer`) exist specifically so RQ5 sweeps have knobs to turn. Step 28's parameter sweep will mutate `PolicyConfig.w1BiToW1BiL1Bias` and `PolicyConfig.immigrantToNativeL2Bias` along axes; step 12 guarantees those mutations have the precise effects the spec describes.
@@ -41,7 +41,7 @@ Implement **F5 (Language-selection policy)** from `docs/spec.md` as a small, plu
 
 **External references (WebFetched):**
 
-4. **Baronchelli, Loreto & Steels (2010), "In-depth analysis of the naming game dynamics in social networks"** — <https://arxiv.org/abs/1008.1096>. The paper's central empirical result is that "networks with strong community structure hinder the system from reaching global agreement" and that **"clusters of coexisting opinions [persist] indefinitely"** when community structure is strong. The language-selection policies implemented in step 12 are *the mechanism by which this is encoded in the msksim model*: the PDF's rule that "bilinguals in World 1 always use L1 with monolinguals" is literally a structural constraint that prevents L2 tokens from propagating into the W1-Mono subpopulation, which *guarantees* the two-cluster outcome the spec's `docs/pdftext.md` calls "ghettoization" under the right ratio. The `mirror-hearer` alternative policy is the explicit counter-factual: it lets researchers ask "what if immigrants preferentially adopted the hearer's dominant language?" — that is the "consensus engineering" intervention Baronchelli et al. discuss. Researchers running RQ5 sweeps will directly operationalize this by swapping between `'default'` and `'mirror-hearer'` with all other parameters fixed, and the step-12 registry makes that swap a one-character change in JSON.
+4. **Baronchelli, Loreto & Steels (2010), "In-depth analysis of the naming game dynamics in social networks"** — <https://arxiv.org/abs/1008.1096>. The paper's central empirical result is that "networks with strong community structure hinder the system from reaching global agreement" and that **"clusters of coexisting opinions [persist] indefinitely"** when community structure is strong. The language-selection policies implemented in step 12 are _the mechanism by which this is encoded in the msksim model_: the PDF's rule that "bilinguals in World 1 always use L1 with monolinguals" is literally a structural constraint that prevents L2 tokens from propagating into the W1-Mono subpopulation, which _guarantees_ the two-cluster outcome the spec's `docs/pdftext.md` calls "ghettoization" under the right ratio. The `mirror-hearer` alternative policy is the explicit counter-factual: it lets researchers ask "what if immigrants preferentially adopted the hearer's dominant language?" — that is the "consensus engineering" intervention Baronchelli et al. discuss. Researchers running RQ5 sweeps will directly operationalize this by swapping between `'default'` and `'mirror-hearer'` with all other parameters fixed, and the step-12 registry makes that swap a one-character change in JSON.
 5. **Zod 4 `z.discriminatedUnion` and `z.enum` API reference** — <https://zod.dev/api>. Confirmed behaviors relevant to step 12: (a) `z.discriminatedUnion("discriminatorKey", [variant1, variant2, ...])` narrows TypeScript on the discriminator automatically, which is how step 01 models the `(speakerClass, hearerClass)` lookup if it chose a discriminated-union representation, and (b) **"discriminated unions are naive — they check input against each option sequentially. Using a discriminator makes parsing more efficient."** The practical consequence for step 12: the runtime lookup inside `createPolicy(...)` uses a plain `Map<${AgentClass}__${AgentClass}, LanguagePolicy>` built once at factory time, not a per-call `discriminatedUnion` parse, because step 12 runs inside the per-tick hot path (potentially millions of calls per run) where re-parsing on every interaction would dominate the runtime budget. Parsing happens at worker-init time in step 20; step 12 treats `PolicyConfig` as already-valid input.
 
 **Paths not taken:**
@@ -65,11 +65,11 @@ Total research links: **5 required** (3 local Next docs, 2 external WebFetched) 
   - `"W2-Immigrant__W2-Immigrant"` → biased coin flip: `rng.nextFloat() < config.immigrantToImmigrantL1Bias ? l1Label : l2Label`.
   - `"W1-Mono__*"` → always `l1Label` (a W1-Mono only knows L1).
   - `"W2-Native__*"` → always `l2Label` (a W2-Native only knows L2).
-  - All eight remaining cells (cross-world like `"W1-Bi__W2-Native"`) resolve to a defensive fallthrough: always `l1Label` for W1-* speakers, always `l2Label` for W2-* speakers. These cells are **unreachable in v1** per the spec's "agents do not move between worlds" rule (`docs/spec.md` §3.2), but the map is exhaustive so a future cross-world experiment does not `undefined`-crash.
+  - All eight remaining cells (cross-world like `"W1-Bi__W2-Native"`) resolve to a defensive fallthrough: always `l1Label` for W1-_ speakers, always `l2Label` for W2-_ speakers. These cells are **unreachable in v1** per the spec's "agents do not move between worlds" rule (`docs/spec.md` §3.2), but the map is exhaustive so a future cross-world experiment does not `undefined`-crash.
 - `lib/sim/policy/alternatives.ts` — the **named alternative policies** for ablation. Each is a zero-config `LanguagePolicy` (no factory), because the alternatives are deliberately parameter-free so researchers can A/B them without changing anything else:
   - `alwaysL1: LanguagePolicy` — returns the first known language of the speaker; falls back to `l1Label` from an injected constant (see §7 for how the constant is sourced). Pure, no RNG touch.
   - `alwaysL2: LanguagePolicy` — symmetric to `alwaysL1`.
-  - `random: LanguagePolicy` — `rng.nextFloat() < 0.5 ? l1Label : l2Label`. Uniform between the two canonical languages; does *not* inspect the speaker's inventory because v1 is strictly bilingual (only L1 and L2 exist per `docs/spec.md` §10). If v2 generalizes to N languages, this policy becomes uniform over `speaker.inventory.keys()`.
+  - `random: LanguagePolicy` — `rng.nextFloat() < 0.5 ? l1Label : l2Label`. Uniform between the two canonical languages; does _not_ inspect the speaker's inventory because v1 is strictly bilingual (only L1 and L2 exist per `docs/spec.md` §10). If v2 generalizes to N languages, this policy becomes uniform over `speaker.inventory.keys()`.
   - `mirrorHearer: LanguagePolicy` — inspects `hearer.inventory` and returns whichever of `{l1Label, l2Label}` has the **higher summed token weight** in the hearer's inventory (ties broken deterministically toward `l1Label`). Encodes the Baronchelli 2010 "consensus engineering" intuition: speakers adapt to the hearer's dominant language. No RNG touch (the tie-breaker is a pure lexicographic rule, not a coin flip).
   - Because alternatives need access to `l1Label`/`l2Label` but take no config, they read from a module-private constant `L1_DEFAULT = "L1"`, `L2_DEFAULT = "L2"` that step 12 documents as "hardcoded defaults, overridden by the default-policy factory." This is acceptable because alternatives exist for ablation experiments that stay on default labels; the researcher who renames languages in the UI will also use the default policy for that experiment. Step 12's CLAUDE.md gotcha entry documents this limitation (section 11).
 - `lib/sim/policy/registry.ts` — the **registry** and the `createPolicy` factory. Exports:

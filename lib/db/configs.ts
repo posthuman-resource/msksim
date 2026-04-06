@@ -60,7 +60,7 @@ export async function saveConfig({
  * get a fully-typed object (and so any schema drift surfaces at read time).
  */
 export async function loadConfig(
-  id: string
+  id: string,
 ): Promise<{ row: Config; parsed: ExperimentConfig } | null> {
   // Import dynamically to avoid a circular dependency: lib/schema/config.ts
   // is not server-only, so it can be imported here at runtime.

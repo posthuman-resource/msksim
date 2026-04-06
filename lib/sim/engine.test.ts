@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { tick, selectPartner } from "./engine";
-import type { SimulationState, InteractionEvent } from "./engine";
-import { bootstrapExperiment } from "./bootstrap";
-import { createRNG } from "./rng";
-import { ExperimentConfig } from "@/lib/schema/experiment";
-import type { World } from "./world";
-import type { AgentState } from "./types";
-import type { Topology } from "./topology";
+import { describe, it, expect } from 'vitest';
+import { tick, selectPartner } from './engine';
+import type { SimulationState, InteractionEvent } from './engine';
+import { bootstrapExperiment } from './bootstrap';
+import { createRNG } from './rng';
+import { ExperimentConfig } from '@/lib/schema/experiment';
+import type { World } from './world';
+import type { AgentState } from './types';
+import type { Topology } from './topology';
 
 // ─── Serialization helpers ────────────────────────────────────────────────────
 // JSON.stringify cannot handle nested Maps directly; this replacer converts them.
@@ -47,13 +47,13 @@ function smallWellMixedConfig(
   return ExperimentConfig.parse({
     world1: {
       agentCount,
-      topology: { type: "well-mixed" },
+      topology: { type: 'well-mixed' },
     },
     world2: {
       agentCount: 2,
-      topology: { type: "well-mixed" },
+      topology: { type: 'well-mixed' },
     },
-    schedulerMode: "sequential",
+    schedulerMode: 'sequential',
     ...extra,
   });
 }
@@ -76,28 +76,28 @@ function smallWellMixedConfig(
  */
 function convergingConfig(agentCount: number): ExperimentConfig {
   const vocabSeed = {
-    "W1-Mono": {
-      L1: { "yellow-like": [{ lexeme: "yellow", initialWeight: 1.0 }] },
+    'W1-Mono': {
+      L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
     },
-    "W1-Bi": {
+    'W1-Bi': {
       L1: {
-        "yellow-like": [
-          { lexeme: "yellow", initialWeight: 1.0 },
-          { lexeme: "gul", initialWeight: 1.0 },
+        'yellow-like': [
+          { lexeme: 'yellow', initialWeight: 1.0 },
+          { lexeme: 'gul', initialWeight: 1.0 },
         ],
       },
     },
-    "W2-Native": {},
-    "W2-Immigrant": {},
+    'W2-Native': {},
+    'W2-Immigrant': {},
   };
 
   // All 16 pairs: always L1 (so no L2 skips, no coin-flip noise)
-  const agentClasses = ["W1-Mono", "W1-Bi", "W2-Native", "W2-Immigrant"] as const;
+  const agentClasses = ['W1-Mono', 'W1-Bi', 'W2-Native', 'W2-Immigrant'] as const;
   const alwaysL1Policies = agentClasses.flatMap((s) =>
     agentClasses.map((h) => ({
       speakerClass: s,
       hearerClass: h,
-      ruleId: "always-l1" as const,
+      ruleId: 'always-l1' as const,
     })),
   );
 
@@ -105,18 +105,18 @@ function convergingConfig(agentCount: number): ExperimentConfig {
     world1: {
       agentCount,
       monolingualBilingualRatio: 1.5, // ~60% W1-Mono, ~40% W1-Bi
-      topology: { type: "well-mixed" },
-      referents: ["yellow-like"],
+      topology: { type: 'well-mixed' },
+      referents: ['yellow-like'],
       vocabularySeed: vocabSeed,
     },
     world2: {
       agentCount: 2,
-      topology: { type: "well-mixed" },
-      referents: ["yellow-like"],
+      topology: { type: 'well-mixed' },
+      referents: ['yellow-like'],
       vocabularySeed: vocabSeed,
     },
     languagePolicies: alwaysL1Policies,
-    schedulerMode: "sequential",
+    schedulerMode: 'sequential',
     deltaPositive: 0.1,
     deltaNegative: 0,
   });
@@ -151,9 +151,9 @@ function successRate(events: InteractionEvent[]): number {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("tick — determinism", () => {
+describe('tick — determinism', () => {
   // Test 9: same seed → same final state
-  it("same seed, 100 ticks → identical final agent arrays", () => {
+  it('same seed, 100 ticks → identical final agent arrays', () => {
     const config = defaultConfig();
 
     const state1 = buildState(config, 42);
@@ -164,16 +164,12 @@ describe("tick — determinism", () => {
     const rng2 = createRNG(42);
     const { state: final2 } = runTicks(state2, rng2, 100);
 
-    expect(serializeAgents(final1.world1.agents)).toBe(
-      serializeAgents(final2.world1.agents),
-    );
-    expect(serializeAgents(final1.world2.agents)).toBe(
-      serializeAgents(final2.world2.agents),
-    );
+    expect(serializeAgents(final1.world1.agents)).toBe(serializeAgents(final2.world1.agents));
+    expect(serializeAgents(final1.world2.agents)).toBe(serializeAgents(final2.world2.agents));
   });
 
   // Test 10: same seed → identical event streams
-  it("same seed, 100 ticks → identical InteractionEvent arrays", () => {
+  it('same seed, 100 ticks → identical InteractionEvent arrays', () => {
     const config = defaultConfig();
 
     const state1 = buildState(config, 42);
@@ -189,9 +185,9 @@ describe("tick — determinism", () => {
   });
 });
 
-describe("tick — success-rate dynamics", () => {
+describe('tick — success-rate dynamics', () => {
   // Test 11: Success rate climbs over time
-  it("success rate is higher in last 20 ticks than first 20 ticks (converging config)", () => {
+  it('success rate is higher in last 20 ticks than first 20 ticks (converging config)', () => {
     const config = convergingConfig(30);
     const state = buildState(config, 7);
     const rng = createRNG(7);
@@ -218,7 +214,7 @@ describe("tick — success-rate dynamics", () => {
   });
 
   // Test 12: Pure-L1 convergence (success rate > 0.95 after 200 ticks)
-  it("success rate > 0.95 in last 20 ticks after 200 ticks (converging config)", () => {
+  it('success rate > 0.95 in last 20 ticks after 200 ticks (converging config)', () => {
     const config = convergingConfig(30);
     const state = buildState(config, 13);
     const rng = createRNG(13);
@@ -235,17 +231,17 @@ describe("tick — success-rate dynamics", () => {
   });
 
   // Test 13: Mixed world has non-zero failure rate initially
-  it("mixed world (W2-Native + W2-Immigrant) has at least one failure in first 10 ticks", () => {
+  it('mixed world (W2-Native + W2-Immigrant) has at least one failure in first 10 ticks', () => {
     // World2 with W2-Immigrant → W2-Native interactions sometimes uses L1
     // (50/50 coin flip), but W2-Native only knows L2 → failures
     const config = ExperimentConfig.parse({
-      world1: { agentCount: 2, topology: { type: "well-mixed" } },
+      world1: { agentCount: 2, topology: { type: 'well-mixed' } },
       world2: {
         agentCount: 30,
-        topology: { type: "well-mixed" },
+        topology: { type: 'well-mixed' },
         monolingualBilingualRatio: 1.5, // ~18 W2-Native + ~12 W2-Immigrant
       },
-      schedulerMode: "sequential",
+      schedulerMode: 'sequential',
     });
 
     const state = buildState(config, 99);
@@ -263,29 +259,29 @@ describe("tick — success-rate dynamics", () => {
   });
 });
 
-describe("tick — retry limit and edge cases", () => {
+describe('tick — retry limit and edge cases', () => {
   // Test 14: Retry-limit exhaustion does not crash
-  it("retry-limit exhaustion does not crash the tick function", () => {
+  it('retry-limit exhaustion does not crash the tick function', () => {
     // W1-Bi agents with empty inventory — "skip" branch fires every activation
     const vocabSeed = {
-      "W1-Mono": {},
-      "W1-Bi": {},
-      "W2-Native": {},
-      "W2-Immigrant": {},
+      'W1-Mono': {},
+      'W1-Bi': {},
+      'W2-Native': {},
+      'W2-Immigrant': {},
     };
     const config = ExperimentConfig.parse({
       world1: {
         agentCount: 2,
-        topology: { type: "well-mixed" },
+        topology: { type: 'well-mixed' },
         vocabularySeed: vocabSeed,
       },
       world2: {
         agentCount: 2,
-        topology: { type: "well-mixed" },
+        topology: { type: 'well-mixed' },
         vocabularySeed: vocabSeed,
       },
       retryLimit: 3,
-      schedulerMode: "sequential",
+      schedulerMode: 'sequential',
     });
 
     const state = buildState(config, 0);
@@ -296,7 +292,7 @@ describe("tick — retry limit and edge cases", () => {
   });
 
   // Test 19: Event tick fields match the tick counter at emission time
-  it("event tick fields match the tick counter at the time of emission", () => {
+  it('event tick fields match the tick counter at the time of emission', () => {
     const config = smallWellMixedConfig(10);
     const state = buildState(config, 1);
     const rng = createRNG(1);
@@ -321,9 +317,9 @@ describe("tick — retry limit and edge cases", () => {
   });
 });
 
-describe("tick — scheduler modes", () => {
+describe('tick — scheduler modes', () => {
   // Test 16: Sequential vs random scheduler produce different activation orders
-  it("sequential and random schedulers produce different event orderings", () => {
+  it('sequential and random schedulers produce different event orderings', () => {
     const config = smallWellMixedConfig(10);
     const seed = 42;
 
@@ -331,7 +327,7 @@ describe("tick — scheduler modes", () => {
     const rngSeq = createRNG(seed);
     const configSeq = ExperimentConfig.parse({
       ...config,
-      schedulerMode: "sequential",
+      schedulerMode: 'sequential',
     });
     stateSeq.config = configSeq;
     const { events: seqEvents } = runTicks(stateSeq, rngSeq, 1);
@@ -340,7 +336,7 @@ describe("tick — scheduler modes", () => {
     const rngRand = createRNG(seed);
     const configRand = ExperimentConfig.parse({
       ...config,
-      schedulerMode: "random",
+      schedulerMode: 'random',
     });
     stateRand.config = configRand;
     const { events: randEvents } = runTicks(stateRand, rngRand, 1);
@@ -350,26 +346,26 @@ describe("tick — scheduler modes", () => {
     expect(randEvents.length).toBeGreaterThan(0);
 
     // The speaker ordering should differ (very high probability with 10 agents)
-    const seqSpeakers = seqEvents.map((e) => e.speakerId).join(",");
-    const randSpeakers = randEvents.map((e) => e.speakerId).join(",");
+    const seqSpeakers = seqEvents.map((e) => e.speakerId).join(',');
+    const randSpeakers = randEvents.map((e) => e.speakerId).join(',');
     expect(seqSpeakers).not.toBe(randSpeakers);
   });
 });
 
-describe("tick — weight update mode", () => {
+describe('tick — weight update mode', () => {
   // Test 17: Normalized weight update keeps Σ weights ≈ 1.0 across a full tick
-  it("l1-normalized mode: Σ weights per (agent, lang, ref) ≈ 1.0 after 10 ticks", () => {
+  it('l1-normalized mode: Σ weights per (agent, lang, ref) ≈ 1.0 after 10 ticks', () => {
     const config = ExperimentConfig.parse({
       world1: {
         agentCount: 10,
-        topology: { type: "well-mixed" },
+        topology: { type: 'well-mixed' },
       },
       world2: {
         agentCount: 10,
-        topology: { type: "well-mixed" },
+        topology: { type: 'well-mixed' },
       },
-      schedulerMode: "sequential",
-      weightUpdateRule: "l1-normalized",
+      schedulerMode: 'sequential',
+      weightUpdateRule: 'l1-normalized',
     });
 
     const state = buildState(config, 5);
@@ -395,14 +391,14 @@ describe("tick — weight update mode", () => {
   });
 });
 
-describe("tick — interaction memory", () => {
+describe('tick — interaction memory', () => {
   // Test 18: interactionMemory is bounded and FIFO-ordered
-  it("agent interactionMemory stays bounded and newest entry is last", () => {
+  it('agent interactionMemory stays bounded and newest entry is last', () => {
     const memorySize = 5;
     const config = ExperimentConfig.parse({
-      world1: { agentCount: 10, topology: { type: "well-mixed" } },
-      world2: { agentCount: 10, topology: { type: "well-mixed" } },
-      schedulerMode: "sequential",
+      world1: { agentCount: 10, topology: { type: 'well-mixed' } },
+      world2: { agentCount: 10, topology: { type: 'well-mixed' } },
+      schedulerMode: 'sequential',
       interactionMemorySize: memorySize,
     });
 
@@ -428,7 +424,7 @@ describe("tick — interaction memory", () => {
   });
 });
 
-describe("selectPartner", () => {
+describe('selectPartner', () => {
   // Test 15: selectPartner('uniform') returns a non-null agent for a connected topology
   it("selectPartner with 'uniform' returns a neighbor agent deterministically", () => {
     const config = smallWellMixedConfig(5);
@@ -436,20 +432,20 @@ describe("selectPartner", () => {
     const speaker = world1.agents[0];
 
     const rng1 = createRNG(99);
-    const partner1 = selectPartner(speaker, world1, rng1, "uniform");
+    const partner1 = selectPartner(speaker, world1, rng1, 'uniform');
     expect(partner1).not.toBeNull();
     expect(partner1!.id).not.toBe(speaker.id);
 
     // Same seed → same partner
     const rng2 = createRNG(99);
-    const partner2 = selectPartner(speaker, world1, rng2, "uniform");
+    const partner2 = selectPartner(speaker, world1, rng2, 'uniform');
     expect(partner2!.id).toBe(partner1!.id);
   });
 
   // Test 20: Isolated-node topology produces no interactions
-  it("isolated-node topology produces no InteractionEvents", () => {
+  it('isolated-node topology produces no InteractionEvents', () => {
     const isolatedTopology: Topology = {
-      kind: "network" as const,
+      kind: 'network' as const,
       size: 2,
       neighbors: () => [],
       pickNeighbor: () => null,
@@ -458,9 +454,9 @@ describe("selectPartner", () => {
 
     // Bootstrap a 2-agent well-mixed world, then replace its topology
     const config = ExperimentConfig.parse({
-      world1: { agentCount: 2, topology: { type: "well-mixed" } },
-      world2: { agentCount: 2, topology: { type: "well-mixed" } },
-      schedulerMode: "sequential",
+      world1: { agentCount: 2, topology: { type: 'well-mixed' } },
+      world2: { agentCount: 2, topology: { type: 'well-mixed' } },
+      schedulerMode: 'sequential',
     });
     const { world1, world2 } = bootstrapExperiment(config, 0);
 
@@ -486,9 +482,9 @@ describe("selectPartner", () => {
   });
 });
 
-describe("tick — tickNumber advancement", () => {
+describe('tick — tickNumber advancement', () => {
   // Verify tickNumber increments correctly across multiple ticks
-  it("tickNumber advances by 1 per tick call", () => {
+  it('tickNumber advances by 1 per tick call', () => {
     const config = smallWellMixedConfig(5);
     const state = buildState(config, 0);
     const rng = createRNG(0);

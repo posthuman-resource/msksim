@@ -1,12 +1,4 @@
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Stub env before any module that reads process.env at load time.
 vi.stubEnv('MSKSIM_DB_PATH', ':memory:');
@@ -46,8 +38,7 @@ vi.mock('next/navigation', () => ({
 const validateSessionCalls = vi.hoisted(() => ({ count: 0 }));
 
 vi.mock('@/lib/auth/sessions', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('@/lib/auth/sessions')>();
+  const original = await importOriginal<typeof import('@/lib/auth/sessions')>();
   return {
     ...original,
     validateSession: vi.fn(async (token: string) => {

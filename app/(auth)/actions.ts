@@ -12,11 +12,7 @@ import 'server-only';
 
 import { redirect } from 'next/navigation';
 
-import {
-  clearSessionCookie,
-  destroySession,
-  getSessionTokenFromCookie,
-} from '@/lib/auth/sessions';
+import { clearSessionCookie, destroySession, getSessionTokenFromCookie } from '@/lib/auth/sessions';
 
 /**
  * Destroys the current session and redirects to the login page.

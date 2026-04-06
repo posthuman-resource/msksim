@@ -51,9 +51,7 @@ describe('lib/db persistence', () => {
     const config = ExperimentConfig.parse({});
     const returned = await saveConfig({ name: 'baseline', config });
 
-    expect(returned.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-    );
+    expect(returned.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(returned.name).toBe('baseline');
     expect(returned.contentJson).toBeTruthy();
     expect(returned.contentHash).toMatch(/^[0-9a-f]{64}$/);
@@ -196,7 +194,12 @@ describe('lib/db persistence', () => {
       metricValue: number;
     }> = [];
     for (let i = 0; i < 10; i++) {
-      metricRows.push({ tick: i, world: 'world1', metricName: 'success_rate', metricValue: i * 0.1 });
+      metricRows.push({
+        tick: i,
+        world: 'world1',
+        metricName: 'success_rate',
+        metricValue: i * 0.1,
+      });
     }
     await insertTickMetrics(run.id, metricRows);
 

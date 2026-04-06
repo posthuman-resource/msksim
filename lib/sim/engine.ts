@@ -52,12 +52,16 @@ export type SimulationState = {
  * One completed speaker→hearer interaction in a single tick.
  * worldId is explicit so metric consumers (steps 15-17) can partition events
  * by world without a per-agent lookup.
+ * speakerClass/hearerClass are denormalised here so step-16 graph metrics can
+ * filter by agent class without a world lookup on the hot path.
  */
 export type InteractionEvent = {
   tick: number;
   worldId: WorldId;
   speakerId: AgentId;
   hearerId: AgentId;
+  speakerClass: import('@/lib/schema/primitives').AgentClass;
+  hearerClass: import('@/lib/schema/primitives').AgentClass;
   language: Language;
   referent: Referent;
   token: TokenLexeme;
@@ -274,6 +278,8 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
           worldId,
           speakerId: speaker.id,
           hearerId: hearer.id,
+          speakerClass: speaker.class,
+          hearerClass: hearer.class,
           language,
           referent,
           token,

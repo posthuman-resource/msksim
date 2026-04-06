@@ -47,11 +47,7 @@ export async function validateSession(
 ): Promise<{ userId: string; expiresAt: Date } | null> {
   if (!token) return null;
 
-  const [row] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, token))
-    .limit(1);
+  const [row] = await db.select().from(sessions).where(eq(sessions.id, token)).limit(1);
 
   if (!row) return null;
   if (row.expiresAt.getTime() < Date.now()) return null;
@@ -72,10 +68,7 @@ export async function destroySession(token: string): Promise<void> {
  * @remarks Must be called from a Server Action or Route Handler; calling
  * during Server Component render will throw.
  */
-export async function setSessionCookie(
-  token: string,
-  expiresAt: Date,
-): Promise<void> {
+export async function setSessionCookie(token: string, expiresAt: Date): Promise<void> {
   (await cookies()).set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

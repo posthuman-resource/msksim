@@ -12,10 +12,6 @@ import 'server-only';
 // See node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route-groups.md
 // § Caveats.
 
-export default function PublicLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }

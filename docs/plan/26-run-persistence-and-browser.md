@@ -1,14 +1,14 @@
 ---
-step: "26"
-title: "run persistence and browser"
+step: '26'
+title: 'run persistence and browser'
 kind: ui
 ui: true
 timeout_minutes: 40
 prerequisites:
-  - "step 08: run persistence schema"
-  - "step 17: run summary metrics"
-  - "step 22: metrics dashboard"
-  - "step 25: experiment config ui"
+  - 'step 08: run persistence schema'
+  - 'step 17: run summary metrics'
+  - 'step 22: metrics dashboard'
+  - 'step 25: experiment config ui'
 ---
 
 ## 1. Goal
@@ -35,7 +35,7 @@ Scope boundary: step 26 does **not** implement the batch queue (step 27), does *
 
 ## 3. Spec references
 
-- `docs/spec.md` **§4.4 Persistence and export**, specifically **F15 Recorded runs**: *"Every completed run is persisted to browser-local storage (IndexedDB) with its config, seed, tick-by-tick metrics, and a summary snapshot. A runs browser lists them with filter/sort, and each run can be re-opened to any of the live views. Acceptance: Runs survive page reload; the browser can store at least 1000 runs of ~10k ticks each before hitting quota warnings; an explicit 'clear all runs' action is available. Supports: RQ1–RQ5."* This is the authoritative contract step 26 delivers, with the single substrate override per `CLAUDE.md` "Stack and versions": **IndexedDB becomes server-side SQLite via drizzle**, all other F15 requirements remain as stated. The "1000 runs × ~10k ticks" quota target is the source of the acceptance-script "store 10 small runs and verify the browser lists all 10" check in §10 (scaled down for MCP-run speed) and the source of the persistence pattern discussion in §7 (a 10k-tick run × 10 metrics × 2 worlds ≈ 200k rows, so 1000 runs ≈ 200M rows in `tick_metrics` — well within SQLite's comfortable range per the research notes in §4). The "re-opened to any of the live views" phrase directly motivates the detail page's reuse of `MetricsDashboard` and the "Reopen in playground" link.
+- `docs/spec.md` **§4.4 Persistence and export**, specifically **F15 Recorded runs**: _"Every completed run is persisted to browser-local storage (IndexedDB) with its config, seed, tick-by-tick metrics, and a summary snapshot. A runs browser lists them with filter/sort, and each run can be re-opened to any of the live views. Acceptance: Runs survive page reload; the browser can store at least 1000 runs of ~10k ticks each before hitting quota warnings; an explicit 'clear all runs' action is available. Supports: RQ1–RQ5."_ This is the authoritative contract step 26 delivers, with the single substrate override per `CLAUDE.md` "Stack and versions": **IndexedDB becomes server-side SQLite via drizzle**, all other F15 requirements remain as stated. The "1000 runs × ~10k ticks" quota target is the source of the acceptance-script "store 10 small runs and verify the browser lists all 10" check in §10 (scaled down for MCP-run speed) and the source of the persistence pattern discussion in §7 (a 10k-tick run × 10 metrics × 2 worlds ≈ 200k rows, so 1000 runs ≈ 200M rows in `tick_metrics` — well within SQLite's comfortable range per the research notes in §4). The "re-opened to any of the live views" phrase directly motivates the detail page's reuse of `MetricsDashboard` and the "Reopen in playground" link.
 
 - `docs/spec.md` **§7.1 Per-tick scalar metrics** — defines the `ScalarMetricsSnapshot` fields that populate `tick_metrics` rows (communication success rate, mean token weight, token weight variance, Nw, matching rate, etc.). Step 26 does not compute these metrics; it **serializes** them from the worker's `TickReport[]` into the long-format `tick_metrics` row shape. The serialization is purely a flattening: each `TickReport` at tick `t` produces one row per `(world, metricName, metricValue)` triple, where `world ∈ {'world1', 'world2', 'both'}` matches the enum from step 08's schema and `metricName` is a stable snake_case string (`'success_rate'`, `'mean_token_weight'`, `'distinct_active_tokens'`, etc.). The exact list of metrics written and their canonical names is documented in §7 slice two as a constant; it is the union of what step 15 and step 16 emit. The step-22 dashboard already reads these paths out of the `TickReport`, so the serialization used here mirrors the dashboard's shaper functions field-for-field to guarantee that a reopened run renders identically to its live-running counterpart.
 
@@ -43,7 +43,7 @@ Scope boundary: step 26 does **not** implement the batch queue (step 27), does *
 
 - `docs/spec.md` **§7.3 Summary metrics (end of run)** — the `RunSummary` shape step 17 produced and step 26 persists into `runs.summary_json` and `runs.classification`. The classification field (`assimilated | segregated | mixed | inconclusive`) is the single most surface-level display on both the runs browser table and the detail page — it is the one-glance answer to "did this experiment produce the outcome I hypothesized?". Section 7 documents a small `formatClassificationLabel(classification)` helper that maps the enum to a human-friendly label with an Okabe-Ito color badge (reusing the same palette step 22 chose for chart series). That label is the column in the runs browser and the headline on the detail page.
 
-- `docs/spec.md` **§1.2 RQ1 — Assimilation vs. segregation thresholds** and **§5.1 US-6/US-7** — *"I want every run to be reproducible from its seed and config"* and *"I want to save a run today and revisit it tomorrow"*. These are the user stories step 26 directly satisfies. Reproducibility from seed is why the runs browser table displays `seed` as a first-class column (so the researcher can visually confirm two side-by-side runs share the same seed) and why the "Reopen in playground" link forwards the seed as a query parameter (so the playground can pin its RNG to the exact value the saved run used). The "save today, revisit tomorrow" requirement is the motivation for persisting the full `tick_metrics` time series rather than just the `RunSummary` — a researcher returning to a run next week may want to re-plot it at a different Y-axis scale or zoom into a specific tick range, and that is only possible if the underlying data is still there.
+- `docs/spec.md` **§1.2 RQ1 — Assimilation vs. segregation thresholds** and **§5.1 US-6/US-7** — _"I want every run to be reproducible from its seed and config"_ and _"I want to save a run today and revisit it tomorrow"_. These are the user stories step 26 directly satisfies. Reproducibility from seed is why the runs browser table displays `seed` as a first-class column (so the researcher can visually confirm two side-by-side runs share the same seed) and why the "Reopen in playground" link forwards the seed as a query parameter (so the playground can pin its RNG to the exact value the saved run used). The "save today, revisit tomorrow" requirement is the motivation for persisting the full `tick_metrics` time series rather than just the `RunSummary` — a researcher returning to a run next week may want to re-plot it at a different Y-axis scale or zoom into a specific tick range, and that is only possible if the underlying data is still there.
 
 - `docs/spec.md` **§8 Architecture Sketch** — the "Persistence (IndexedDB)" box, overridden to SQLite per `CLAUDE.md`. Step 26 is the step where the architectural arrow from "worker emits metrics" into the persistence box actually carries bytes, completing the §8 diagram.
 
@@ -57,7 +57,7 @@ Minimum requirements met: **4 local Next doc citations, 2 WebFetched external UR
 
 1. **`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/page.md`**, the entire file (240 lines). This is the canonical reference for the `page.tsx` file convention under the App Router in Next 16. Load-bearing facts for step 26: (a) `page.tsx` is the leaf of a route segment, required to make a route publicly accessible — so `app/(auth)/runs/page.tsx` is what renders at `/runs` and `app/(auth)/runs/[id]/page.tsx` is what renders at `/runs/<id>`. (b) Pages are Server Components by default, which is exactly what step 26 wants for both the index and detail pages: reads go through the DAL (`verifySession()`) and the step-08 helpers in the Server Component body, and any client interactivity (the delete-confirmation dialog, the filter dropdowns) is delegated to small client-component children marked with `'use client'`. (c) The `params` prop for dynamic segments is a **`Promise`** in Next 16 — `params: Promise<{ id: string }>` — and must be `await`ed inside the Server Component. Forgetting the `await` produces a silently Promise-shaped object per the "Known gotchas" entry in `CLAUDE.md`. Step 26's detail page body begins with `const { id } = await params;` immediately after the session check. (d) `searchParams` is also a `Promise` in Next 16 — step 26's runs index page uses `searchParams` to carry filter state through the URL (`/runs?classification=assimilated&configId=xyz`), so the page body awaits it and derives the active filter set before calling `listRuns(...)`. Using URL-driven filter state rather than React state is deliberate: it makes the runs browser bookmarkable and shareable, which is the same affordance `docs/spec.md` F11/US-12 asks for on the config-library side ("share a colleague's exact config via URL").
 
-2. **`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md`**, the entire file (375 lines). Confirms the `[id]` bracket notation for dynamic segments and the `Promise<{ id: string }>` TypeScript shape of `params`. Load-bearing facts: (a) the `PageProps<'/runs/[id]'>` helper generated by `next typegen` (also documented in `CLAUDE.md` "Next.js 16 deltas from training data" — `next typegen` *"generates `PageProps<...>` types for dynamic route segments. Run after adding dynamic segments like `/runs/[id]`"*) gives the detail page a fully typed `params` prop without hand-writing the promise shape. Step 26's implementing claude runs `npx next typegen` after creating the `[id]` directory so the PageProps helper is available, then uses `export default async function RunDetailPage(props: PageProps<'/(auth)/runs/[id]'>) { ... }`. The route-group literal `(auth)` is preserved in the PageProps path because that's how `next typegen` encodes the directory structure. (b) Dynamic segments are runtime data — the `params` values are not known until a request lands, so the page rendering is "dynamic" per Next's rendering glossary. That's fine for step 26 because every `/runs/[id]` visit is authenticated via `verifySession()` anyway, so static rendering was never on the table. (c) The `notFound()` function from `next/navigation` is the canonical way to handle "run id not in database" — calling it from a Server Component throws a `NEXT_NOT_FOUND` error that Next intercepts and renders the nearest `not-found.tsx` (or the default 404). Step 26's detail page invokes `notFound()` if `getRun(id)` returns `null`, rather than rendering a half-shaped error state. A dedicated `app/(auth)/runs/[id]/not-found.tsx` is **not** created in this step because the default Next 404 page is sufficient for v1; it can be added in a polish step later if the researchers want a nicer "Run not found. Maybe it was deleted? Go back to /runs." message.
+2. **`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md`**, the entire file (375 lines). Confirms the `[id]` bracket notation for dynamic segments and the `Promise<{ id: string }>` TypeScript shape of `params`. Load-bearing facts: (a) the `PageProps<'/runs/[id]'>` helper generated by `next typegen` (also documented in `CLAUDE.md` "Next.js 16 deltas from training data" — `next typegen` _"generates `PageProps<...>` types for dynamic route segments. Run after adding dynamic segments like `/runs/[id]`"_) gives the detail page a fully typed `params` prop without hand-writing the promise shape. Step 26's implementing claude runs `npx next typegen` after creating the `[id]` directory so the PageProps helper is available, then uses `export default async function RunDetailPage(props: PageProps<'/(auth)/runs/[id]'>) { ... }`. The route-group literal `(auth)` is preserved in the PageProps path because that's how `next typegen` encodes the directory structure. (b) Dynamic segments are runtime data — the `params` values are not known until a request lands, so the page rendering is "dynamic" per Next's rendering glossary. That's fine for step 26 because every `/runs/[id]` visit is authenticated via `verifySession()` anyway, so static rendering was never on the table. (c) The `notFound()` function from `next/navigation` is the canonical way to handle "run id not in database" — calling it from a Server Component throws a `NEXT_NOT_FOUND` error that Next intercepts and renders the nearest `not-found.tsx` (or the default 404). Step 26's detail page invokes `notFound()` if `getRun(id)` returns `null`, rather than rendering a half-shaped error state. A dedicated `app/(auth)/runs/[id]/not-found.tsx` is **not** created in this step because the default Next 404 page is sufficient for v1; it can be added in a polish step later if the researchers want a nicer "Run not found. Maybe it was deleted? Go back to /runs." message.
 
 3. **`node_modules/next/dist/docs/01-app/02-guides/forms.md`**, sections on Server Actions and form validation. Load-bearing facts: (a) Server Actions are declared with `'use server'` at either the top of the file or at the top of the function (both patterns are valid in Next 16; step 26 uses the file-top `'use server'` so the whole actions module is isomorphic: `app/(auth)/playground/actions.ts` or `app/(auth)/runs/actions.ts` per §5 below). (b) Server Actions can be invoked from client components as regular async function calls — no `fetch` boilerplate, no route URL, Next's RSC runtime handles the wire transport. Step 26's "Delete" button in the runs table is a client component that imports the `deleteRun` Server Action by name and calls it as `await deleteRun(id)` on click. (c) Server Actions that mutate data should call `revalidatePath('/runs')` or `revalidateTag('runs')` from `next/cache` to invalidate the cached Server Component so the page re-fetches fresh data. Step 26's `persistCompletedRun` Server Action ends with `revalidatePath('/runs')` and `deleteRun` does the same. (d) Per `CLAUDE.md` "Authentication patterns" and the data-security guide cited in step 08 research note 2, every Server Action calls `verifySession()` first, **independently of the proxy cookie check** — a proxy carveout could accidentally let a POST to a Server Action bypass auth otherwise. Step 26's Server Actions enforce this: the first line of every `'use server'` function body is `const session = await verifySession();`, and the `createdBy` column on inserts carries `session.userId` so rows have an ownership pointer.
 
@@ -71,7 +71,7 @@ Minimum requirements met: **4 local Next doc citations, 2 WebFetched external UR
 
 ### Path not taken
 
-7. **Storing full agent-state snapshots at every tick in a dedicated table, so the detail page can replay the lattice canvas tick-by-tick — rejected.** The obvious "most satisfying" design is: every tick writes its full `Map<Language, Map<Referent, Map<Token, Weight>>>` inventory for every agent into a `snapshots` row, so a researcher revisiting the run next week can scrub through the lattice canvas at any tick. **Rejected for three concrete reasons**: (a) *Size*: at N = 500 per world × 2 worlds × 10k ticks × ~10 token entries per agent × ~40 bytes per JSON entry = ~4 GB per run. The F15 acceptance target "1000 runs per user" would demand 4 TB per user. SQLite can hold it, but `better-sqlite3` would spend many seconds serializing each row and the page file would dwarf the researcher's laptop SSD. (b) *Spec alignment*: `docs/spec.md` §7.2 explicitly says snapshots are *"sampled"* at a configurable interval (default every 10 ticks), not every tick — the spec already rejects this design for the same size reason. (c) *Use case*: no user story in §5 asks for tick-by-tick replay; US-7 ("save a run today and revisit it tomorrow") and US-8 ("pause and inspect agent inventories") are satisfied by sampled snapshots every 10 ticks plus the cumulative time-series metrics. Step 26 honors the spec: snapshots are persisted only when the worker supplied them, at whatever interval the config specified, and the detail page uses them **only** to render a summary card or a small timeline of "sampled inventories at ticks [10, 20, 30, ...]" rather than to drive a full tick-by-tick canvas replay. Tick-by-tick canvas replay, if ever wanted, is a v2 feature built on top of a different storage substrate (probably a compact binary snapshot format and memory-mapped reads), not on top of the JSON TEXT snapshots table this step consumes.
+7. **Storing full agent-state snapshots at every tick in a dedicated table, so the detail page can replay the lattice canvas tick-by-tick — rejected.** The obvious "most satisfying" design is: every tick writes its full `Map<Language, Map<Referent, Map<Token, Weight>>>` inventory for every agent into a `snapshots` row, so a researcher revisiting the run next week can scrub through the lattice canvas at any tick. **Rejected for three concrete reasons**: (a) _Size_: at N = 500 per world × 2 worlds × 10k ticks × ~10 token entries per agent × ~40 bytes per JSON entry = ~4 GB per run. The F15 acceptance target "1000 runs per user" would demand 4 TB per user. SQLite can hold it, but `better-sqlite3` would spend many seconds serializing each row and the page file would dwarf the researcher's laptop SSD. (b) _Spec alignment_: `docs/spec.md` §7.2 explicitly says snapshots are _"sampled"_ at a configurable interval (default every 10 ticks), not every tick — the spec already rejects this design for the same size reason. (c) _Use case_: no user story in §5 asks for tick-by-tick replay; US-7 ("save a run today and revisit it tomorrow") and US-8 ("pause and inspect agent inventories") are satisfied by sampled snapshots every 10 ticks plus the cumulative time-series metrics. Step 26 honors the spec: snapshots are persisted only when the worker supplied them, at whatever interval the config specified, and the detail page uses them **only** to render a summary card or a small timeline of "sampled inventories at ticks [10, 20, 30, ...]" rather than to drive a full tick-by-tick canvas replay. Tick-by-tick canvas replay, if ever wanted, is a v2 feature built on top of a different storage substrate (probably a compact binary snapshot format and memory-mapped reads), not on top of the JSON TEXT snapshots table this step consumes.
 
 8. **Running the transaction body inside `db.transaction` on the client side via a Comlink-proxied call to a server-thread transaction runner — rejected.** Considered briefly because the worker already has the `RunResult` in memory and "just shipping it to the DB" in-place would feel symmetric. **Rejected** because (a) the worker runs in the browser and has no network access to the SQLite file (the DB is on the Node server, not the client), (b) a "Comlink to server" bridge would require a WebSocket or server-sent events channel that is out of scope for v1, and (c) Server Actions are the canonical Next 16 pattern for exactly this handoff (client → server, typed, authenticated, transactional). Step 26 uses Server Actions as documented in research note 3, not a bespoke RPC layer. Recording the rejection so a future agent does not revisit the design without reading this rationale.
 
@@ -120,6 +120,7 @@ All paths relative to the repo root.
 ### Client components for the runs browser UI
 
 - **`app/(auth)/runs/runs-table.tsx`** — the **client component** that renders the table rows with the delete button and the filter/sort header controls. Starts with `'use client'`. Props:
+
   ```typescript
   interface RunsTableProps {
     rows: Array<{
@@ -134,11 +135,17 @@ All paths relative to the repo root.
       durationSeconds: number | null;
     }>;
     configs: Array<{ id: string; name: string }>;
-    activeFilters: { classification?: string; configId?: string; finishedAfter?: string; finishedBefore?: string };
+    activeFilters: {
+      classification?: string;
+      configId?: string;
+      finishedAfter?: string;
+      finishedBefore?: string;
+    };
     activeSort: 'finishedAt' | 'tickCount';
     pagination: { page: number; total: number };
   }
   ```
+
   The component wires:
   - A filter bar with a classification `<select>` (empty + 4 values + "all"), a config `<select>` populated from `configs`, two `<input type="date">` pickers for date range, and a sort `<select>`. Every change fires a call to `useRouter().replace(...)` with the new `searchParams` — this is the URL-driven filter state pattern from research note 1, and it re-triggers the Server Component render with the new filter set automatically via Next's App Router cache invalidation.
   - The table body, rendering one `<tr>` per row with the columns documented in §5 above.
@@ -195,27 +202,67 @@ const SCALAR_METRICS: ReadonlyArray<{
   world: 'world1' | 'world2' | 'both';
   extract: (r: TickReport) => number | null;
 }> = [
-  { name: 'success_rate',            world: 'world1', extract: r => r.scalar.world1.successRate.rate },
-  { name: 'success_rate',            world: 'world2', extract: r => r.scalar.world2.successRate.rate },
-  { name: 'success_rate',            world: 'both',   extract: r => r.scalar.overall.successRate.rate },
-  { name: 'mean_token_weight',       world: 'world1', extract: r => meanOfLanguages(r.scalar.world1.perLanguage) },
-  { name: 'mean_token_weight',       world: 'world2', extract: r => meanOfLanguages(r.scalar.world2.perLanguage) },
-  { name: 'token_weight_variance',   world: 'world1', extract: r => varianceOfLanguages(r.scalar.world1.perLanguage) },
-  { name: 'token_weight_variance',   world: 'world2', extract: r => varianceOfLanguages(r.scalar.world2.perLanguage) },
-  { name: 'distinct_active_tokens',  world: 'world1', extract: r => r.scalar.world1.distinctActiveTokens },
-  { name: 'distinct_active_tokens',  world: 'world2', extract: r => r.scalar.world2.distinctActiveTokens },
-  { name: 'matching_rate',           world: 'world1', extract: r => r.scalar.world1.matchingRate },
-  { name: 'matching_rate',           world: 'world2', extract: r => r.scalar.world2.matchingRate },
+  { name: 'success_rate', world: 'world1', extract: (r) => r.scalar.world1.successRate.rate },
+  { name: 'success_rate', world: 'world2', extract: (r) => r.scalar.world2.successRate.rate },
+  { name: 'success_rate', world: 'both', extract: (r) => r.scalar.overall.successRate.rate },
+  {
+    name: 'mean_token_weight',
+    world: 'world1',
+    extract: (r) => meanOfLanguages(r.scalar.world1.perLanguage),
+  },
+  {
+    name: 'mean_token_weight',
+    world: 'world2',
+    extract: (r) => meanOfLanguages(r.scalar.world2.perLanguage),
+  },
+  {
+    name: 'token_weight_variance',
+    world: 'world1',
+    extract: (r) => varianceOfLanguages(r.scalar.world1.perLanguage),
+  },
+  {
+    name: 'token_weight_variance',
+    world: 'world2',
+    extract: (r) => varianceOfLanguages(r.scalar.world2.perLanguage),
+  },
+  {
+    name: 'distinct_active_tokens',
+    world: 'world1',
+    extract: (r) => r.scalar.world1.distinctActiveTokens,
+  },
+  {
+    name: 'distinct_active_tokens',
+    world: 'world2',
+    extract: (r) => r.scalar.world2.distinctActiveTokens,
+  },
+  { name: 'matching_rate', world: 'world1', extract: (r) => r.scalar.world1.matchingRate },
+  { name: 'matching_rate', world: 'world2', extract: (r) => r.scalar.world2.matchingRate },
 ];
 
-const GRAPH_METRICS: ReadonlyArray<{ name: string; world: 'world1' | 'world2' | 'both'; extract: (r: TickReport) => number | null }> = [
-  { name: 'largest_cluster_size',      world: 'world1', extract: r => r.graph.world1.largestClusterSize },
-  { name: 'largest_cluster_size',      world: 'world2', extract: r => r.graph.world2.largestClusterSize },
-  { name: 'cluster_count',             world: 'world1', extract: r => r.graph.world1.clusterCount },
-  { name: 'cluster_count',             world: 'world2', extract: r => r.graph.world2.clusterCount },
-  { name: 'interaction_modularity',    world: 'both',   extract: r => r.graph.interactionGraphModularity },
-  { name: 'assimilation_index',        world: 'both',   extract: r => r.graph.assimilationIndex },
-  { name: 'segregation_index',         world: 'world2', extract: r => r.graph.segregationIndex },
+const GRAPH_METRICS: ReadonlyArray<{
+  name: string;
+  world: 'world1' | 'world2' | 'both';
+  extract: (r: TickReport) => number | null;
+}> = [
+  {
+    name: 'largest_cluster_size',
+    world: 'world1',
+    extract: (r) => r.graph.world1.largestClusterSize,
+  },
+  {
+    name: 'largest_cluster_size',
+    world: 'world2',
+    extract: (r) => r.graph.world2.largestClusterSize,
+  },
+  { name: 'cluster_count', world: 'world1', extract: (r) => r.graph.world1.clusterCount },
+  { name: 'cluster_count', world: 'world2', extract: (r) => r.graph.world2.clusterCount },
+  {
+    name: 'interaction_modularity',
+    world: 'both',
+    extract: (r) => r.graph.interactionGraphModularity,
+  },
+  { name: 'assimilation_index', world: 'both', extract: (r) => r.graph.assimilationIndex },
+  { name: 'segregation_index', world: 'world2', extract: (r) => r.graph.segregationIndex },
 ];
 ```
 
@@ -225,9 +272,9 @@ The inverse `materializeTickReports(rows)` walks the sorted `TickMetric[]` and r
 
 **Slice three — write the serialize unit tests.** Create `lib/sim/metrics/serialize.test.ts` with the four tests enumerated in §9. Run `npm test -- serialize` and confirm green. The round-trip test (test #1) is the most important: it constructs a synthetic `TickReport[]` with known values, runs `serializeTickReportsToMetricRows` to get rows, runs `materializeTickReports` to get back a `TickReport[]`, and deep-equals the result against the original (modulo `undefined`/`null` normalization). Any asymmetry in the path mapping surfaces here.
 
-**Slice four — extend `lib/db/runs.ts` with the new filter signatures and the `listRunsWithConfig` / `countRuns` helpers.** Edit the file in place. Preserve every existing export. Add the new options to the `listRunsOptions` interface (or the equivalent type step 08 declared). Compose the `where` clause via `and(...)` from `drizzle-orm`. Add the `innerJoin` version as a separate exported function rather than overloading the existing one (cleaner call sites on the runs browser page). Add the `count(*)` projection via `sql\`count(*)\`` or drizzle's `count()` helper if it exists. Verify with `npm run typecheck`. Since these are server-only additions, no new test file is required; the existing `lib/db/persistence.test.ts` from step 08 is extended in-place with two new tests (see §9) to cover the join and the count.
+**Slice four — extend `lib/db/runs.ts` with the new filter signatures and the `listRunsWithConfig` / `countRuns` helpers.** Edit the file in place. Preserve every existing export. Add the new options to the `listRunsOptions` interface (or the equivalent type step 08 declared). Compose the `where` clause via `and(...)` from `drizzle-orm`. Add the `innerJoin` version as a separate exported function rather than overloading the existing one (cleaner call sites on the runs browser page). Add the `count(*)` projection via `sql\`count(\*)\``or drizzle's`count()`helper if it exists. Verify with`npm run typecheck`. Since these are server-only additions, no new test file is required; the existing `lib/db/persistence.test.ts` from step 08 is extended in-place with two new tests (see §9) to cover the join and the count.
 
-**Slice five — write `persistCompletedRun` and `deleteRun` Server Actions.** Create (or extend) `app/(auth)/playground/actions.ts` and `app/(auth)/runs/actions.ts` per the locations decided in §5. Write each Server Action with `'use server'` at the top of the file. The `persistCompletedRun` body opens a single `db.transaction` block and performs the sequence: insert new `runs` row with `status: 'pending'` → chunk-insert `tick_metrics` rows → loop `snapshots.insert` for any sampled snapshots → update `runs` row to `status: 'completed'` with the summary fields → return `{ runId }`. Wrap the whole thing in `try { ... } catch (err) { throw new Error(\`persistCompletedRun failed: \${err.message}\`); }` so a DB error surfaces with context (the Server Action error message is displayed to the user via the playground shell's error-toast code path). After the transaction completes, call `revalidatePath('/runs')` from `next/cache`. The `deleteRun` action is ~15 lines: verify session, call the DB helper, revalidate the path. Neither action calls any client-side code; both are server-only and import only from `lib/db/*`, `lib/auth/*`, and `next/cache`.
+**Slice five — write `persistCompletedRun` and `deleteRun` Server Actions.** Create (or extend) `app/(auth)/playground/actions.ts` and `app/(auth)/runs/actions.ts` per the locations decided in §5. Write each Server Action with `'use server'` at the top of the file. The `persistCompletedRun` body opens a single `db.transaction` block and performs the sequence: insert new `runs` row with `status: 'pending'` → chunk-insert `tick_metrics` rows → loop `snapshots.insert` for any sampled snapshots → update `runs` row to `status: 'completed'` with the summary fields → return `{ runId }`. Wrap the whole thing in `try { ... } catch (err) { throw new Error(\`persistCompletedRun failed: \${err.message}\`); }`so a DB error surfaces with context (the Server Action error message is displayed to the user via the playground shell's error-toast code path). After the transaction completes, call`revalidatePath('/runs')`from`next/cache`. The `deleteRun`action is ~15 lines: verify session, call the DB helper, revalidate the path. Neither action calls any client-side code; both are server-only and import only from`lib/db/_`, `lib/auth/_`, and `next/cache`.
 
 **Slice six — build the runs browser Server Component page.** Open `app/(auth)/runs/page.tsx`, replace its stub contents with the Server Component body described in §5. Start the file with the standard auth import (`import { verifySession } from '@/lib/auth/dal';`), the DB helpers (`import { listRunsWithConfig, countRuns } from '@/lib/db/runs'; import { listConfigs } from '@/lib/db/configs';`), the page-shell layout components (headings, grid), and the client-component imports (`RunsTable`). Parse `searchParams`, fetch the data, render the page shell and the `<RunsTable>` client component. Verify with `npm run typecheck`.
 
@@ -276,7 +323,7 @@ All tests live in `lib/sim/metrics/serialize.test.ts` (new file) and in an exten
 
 3. **`formatClassificationLabel` returns the expected label and color for every enum value.** Test all five inputs: `'assimilated'`, `'segregated'`, `'mixed'`, `'inconclusive'`, `null`. Assert each returns the documented `{ label, color }` pair (with hex colors matching the Okabe-Ito palette).
 
-4. **Serialization produces rows in a stable order that matches the composite primary key.** Call `serializeTickReportsToMetricRows('run-id', reports)` where `reports` has 3 ticks. Assert the returned array is sorted such that applying `drizzle`'s insert on it would not produce PK collisions (i.e., no two rows share the same `(tick, world, metric_name)` for the same `runId`). This is a pre-insert sanity check: the test iterates the rows, builds a `Set<string>` of `\`\${tick}-\${world}-\${metricName}\`` keys, and asserts `set.size === rows.length`.
+4. **Serialization produces rows in a stable order that matches the composite primary key.** Call `serializeTickReportsToMetricRows('run-id', reports)` where `reports` has 3 ticks. Assert the returned array is sorted such that applying `drizzle`'s insert on it would not produce PK collisions (i.e., no two rows share the same `(tick, world, metric_name)` for the same `runId`). This is a pre-insert sanity check: the test iterates the rows, builds a `Set<string>` of `\`\${tick}-\${world}-\${metricName}\``keys, and asserts`set.size === rows.length`.
 
 **In `lib/db/persistence.test.ts` (extension to the existing file):**
 
@@ -341,6 +388,7 @@ step 26: run persistence and browser
 No conventional-commit prefix, no emoji, no trailing period. The `step 26:` marker is load-bearing for `scripts/run-plan.ts` progress detection per `CLAUDE.md` "Commit-message convention". One commit for the whole step; if `claude -p` produces intermediate commits during implementation they are squashed by the orchestrator before advancing to step 27.
 
 The commit body (optional but recommended) lists:
+
 - The two new Server Actions (`persistCompletedRun`, `deleteRun`) and their transaction pattern.
 - The two new pages (`app/(auth)/runs/page.tsx` replacement and `app/(auth)/runs/[id]/page.tsx` new).
 - The new client component `runs-table.tsx` and the supporting `run-summary-card.tsx`.

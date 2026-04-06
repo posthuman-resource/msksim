@@ -1,12 +1,12 @@
 ---
-step: "10"
-title: "topology implementations"
+step: '10'
+title: 'topology implementations'
 kind: sim-core
 ui: false
 timeout_minutes: 20
 prerequisites:
-  - "step 01: zod config schema"
-  - "step 09: seeded rng and core types"
+  - 'step 01: zod config schema'
+  - 'step 09: seeded rng and core types'
 ---
 
 ## 1. Goal

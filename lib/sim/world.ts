@@ -5,10 +5,10 @@
 //   - Arrays serialize trivially to JSON for step-16 snapshots.
 //   - The helpers below hide the linear scan, enabling a future O(1) index swap.
 
-import type { AgentState, AgentId, Language, Referent } from "./types";
-import type { Topology } from "./topology";
+import type { AgentState, AgentId, Language, Referent } from './types';
+import type { Topology } from './topology';
 
-export type WorldId = "world1" | "world2";
+export type WorldId = 'world1' | 'world2';
 
 export type World = {
   readonly id: WorldId;
@@ -24,9 +24,6 @@ export function findAgentById(world: World, id: AgentId): AgentState | undefined
 }
 
 /** Linear scan by position. Returns undefined when no agent occupies the given position. */
-export function findAgentByPosition(
-  world: World,
-  position: number,
-): AgentState | undefined {
+export function findAgentByPosition(world: World, position: number): AgentState | undefined {
   return world.agents.find((a) => a.position === position);
 }

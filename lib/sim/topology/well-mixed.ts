@@ -1,5 +1,5 @@
-import type { RNG } from "../rng";
-import type { Topology, TopologyKind } from "../topology";
+import type { RNG } from '../rng';
+import type { Topology, TopologyKind } from '../topology';
 
 /**
  * Well-mixed (mean-field) topology: every agent can interact with every
@@ -13,12 +13,12 @@ import type { Topology, TopologyKind } from "../topology";
  * if it hits the querying agent's own position. Expected rolls ≈ 1 + 1/(N-1).
  */
 export class WellMixedTopology implements Topology {
-  readonly kind: TopologyKind = "well-mixed";
+  readonly kind: TopologyKind = 'well-mixed';
   readonly size: number;
 
   constructor(size: number) {
     if (size === 0) {
-      throw new RangeError("WellMixedTopology: size must be > 0");
+      throw new RangeError('WellMixedTopology: size must be > 0');
     }
     this.size = size;
   }

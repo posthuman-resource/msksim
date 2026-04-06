@@ -15,7 +15,7 @@ export {
   TokenLexeme,
   Weight,
   WeightUpdateRule,
-} from "./primitives.js";
+} from './primitives.js';
 export type {
   AgentClass as AgentClassType,
   Language as LanguageType,
@@ -23,45 +23,47 @@ export type {
   TokenLexeme as TokenLexemeType,
   Weight as WeightType,
   WeightUpdateRule as WeightUpdateRuleType,
-} from "./primitives.js";
+} from './primitives.js';
 
-export { NeighborhoodType, TopologyConfig } from "./topology.js";
+export { NeighborhoodType, TopologyConfig } from './topology.js';
 export type {
   NeighborhoodType as NeighborhoodTypeType,
   TopologyConfig as TopologyConfigType,
   LatticeTopology,
   WellMixedTopology,
   NetworkTopology,
-} from "./topology.js";
+} from './topology.js';
 
-export { LanguagePolicyRuleId, LanguageBias, LanguagePolicyEntry, LanguagePolicySet } from "./policy.js";
+export {
+  LanguagePolicyRuleId,
+  LanguageBias,
+  LanguagePolicyEntry,
+  LanguagePolicySet,
+} from './policy.js';
 export type {
   LanguagePolicyRuleId as LanguagePolicyRuleIdType,
   LanguageBias as LanguageBiasType,
   LanguagePolicyEntry as LanguagePolicyEntryType,
   LanguagePolicySet as LanguagePolicySetType,
-} from "./policy.js";
+} from './policy.js';
 
-export { VocabularySeed, WorldConfig } from "./world.js";
+export { VocabularySeed, WorldConfig } from './world.js';
 export type {
   VocabularySeed as VocabularySeedType,
   WorldConfig as WorldConfigType,
-} from "./world.js";
+} from './world.js';
 
-export { PreferentialAttachmentConfig } from "./preferential.js";
-export type { PreferentialAttachmentConfig as PreferentialAttachmentConfigType } from "./preferential.js";
+export { PreferentialAttachmentConfig } from './preferential.js';
+export type { PreferentialAttachmentConfig as PreferentialAttachmentConfigType } from './preferential.js';
 
-export { SchedulerMode, ExperimentConfig } from "./experiment.js";
+export { SchedulerMode, ExperimentConfig } from './experiment.js';
 export type {
   SchedulerMode as SchedulerModeType,
   ExperimentConfig as ExperimentConfigType,
-} from "./experiment.js";
+} from './experiment.js';
 
-export { BatchConfig, SweepConfig } from "./batch.js";
-export type {
-  BatchConfig as BatchConfigType,
-  SweepConfig as SweepConfigType,
-} from "./batch.js";
+export { BatchConfig, SweepConfig } from './batch.js';
+export type { BatchConfig as BatchConfigType, SweepConfig as SweepConfigType } from './batch.js';
 
 export {
   defaultLanguagePolicies,
@@ -81,4 +83,4 @@ export {
   DEFAULT_SEED,
   DEFAULT_SAMPLE_INTERVAL,
   DEFAULT_INTERACTION_MEMORY_SIZE,
-} from "./defaults.js";
+} from './defaults.js';

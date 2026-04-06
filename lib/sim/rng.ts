@@ -1,6 +1,6 @@
-import { xoroshiro128plus } from "pure-rand/generator/xoroshiro128plus";
-import { uniformInt } from "pure-rand/distribution/uniformInt";
-import { uniformFloat64 } from "pure-rand/distribution/uniformFloat64";
+import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
+import { uniformInt } from 'pure-rand/distribution/uniformInt';
+import { uniformFloat64 } from 'pure-rand/distribution/uniformFloat64';
 
 // The single source of entropy for the simulation core.
 // Never call the global Math random function in lib/sim/, workers/, or any
@@ -42,9 +42,7 @@ export function createRNG(seed: number): RNG {
   return {
     nextInt(min: number, max: number): number {
       if (min > max) {
-        throw new RangeError(
-          `nextInt: min (${min}) must be <= max (${max})`
-        );
+        throw new RangeError(`nextInt: min (${min}) must be <= max (${max})`);
       }
       return uniformInt(gen, min, max);
     },
@@ -55,7 +53,7 @@ export function createRNG(seed: number): RNG {
 
     pick<T>(items: readonly T[]): T {
       if (items.length === 0) {
-        throw new RangeError("pick: items array must not be empty");
+        throw new RangeError('pick: items array must not be empty');
       }
       return items[uniformInt(gen, 0, items.length - 1)];
     },
@@ -63,7 +61,7 @@ export function createRNG(seed: number): RNG {
     pickWeighted<T>(items: readonly T[], weights: readonly number[]): T {
       if (items.length !== weights.length) {
         throw new RangeError(
-          `pickWeighted: items.length (${items.length}) !== weights.length (${weights.length})`
+          `pickWeighted: items.length (${items.length}) !== weights.length (${weights.length})`,
         );
       }
       let total = 0;
@@ -74,7 +72,7 @@ export function createRNG(seed: number): RNG {
         total += w;
       }
       if (total === 0) {
-        throw new RangeError("pickWeighted: all weights are zero");
+        throw new RangeError('pickWeighted: all weights are zero');
       }
       const draw = uniformFloat64(gen) * total;
       let cumulative = 0;

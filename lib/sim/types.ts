@@ -10,13 +10,7 @@
 // assignable to these types without a cast. AgentId is defined locally
 // because it has no Zod schema counterpart.
 
-export type {
-  AgentClass,
-  Language,
-  Referent,
-  TokenLexeme,
-  Weight,
-} from "@/lib/schema/primitives";
+export type { AgentClass, Language, Referent, TokenLexeme, Weight } from '@/lib/schema/primitives';
 
 // ─── Branded primitives ───────────────────────────────────────────────────────
 
@@ -24,11 +18,11 @@ export type {
 type Brand<Base, Tag extends string> = Base & { readonly __brand: Tag };
 
 /** Opaque identifier for a simulation agent (uuid v4). */
-export type AgentId = Brand<string, "AgentId">;
+export type AgentId = Brand<string, 'AgentId'>;
 
 // ─── Token ────────────────────────────────────────────────────────────────────
 
-import type { Language, TokenLexeme } from "@/lib/schema/primitives";
+import type { Language, TokenLexeme } from '@/lib/schema/primitives';
 
 /** A (language, lexeme) pair per docs/spec.md §3.5. */
 export type Token = {
@@ -44,7 +38,7 @@ export type TokenKey = string;
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
-import type { Referent, Weight } from "@/lib/schema/primitives";
+import type { Referent, Weight } from '@/lib/schema/primitives';
 
 /**
  * Nested weight map per docs/spec.md §3.2.
@@ -71,7 +65,7 @@ export type InteractionRecord = {
 
 // ─── Agent state ──────────────────────────────────────────────────────────────
 
-import type { AgentClass } from "@/lib/schema/primitives";
+import type { AgentClass } from '@/lib/schema/primitives';
 
 /**
  * Full agent state snapshot per docs/spec.md §3.2.
@@ -115,7 +109,7 @@ export function inventoryGet(
   inv: Inventory,
   lang: Language,
   ref: Referent,
-  lex: TokenLexeme
+  lex: TokenLexeme,
 ): Weight | undefined {
   return inv.get(lang)?.get(ref)?.get(lex);
 }
@@ -130,7 +124,7 @@ export function inventorySet(
   lang: Language,
   ref: Referent,
   lex: TokenLexeme,
-  weight: Weight
+  weight: Weight,
 ): Inventory {
   // Work with fully mutable Maps internally, then return as Inventory.
   type L3 = Map<TokenLexeme, Weight>;
@@ -158,7 +152,7 @@ export function inventoryIncrement(
   ref: Referent,
   lex: TokenLexeme,
   delta: number,
-  floor = 0
+  floor = 0,
 ): Inventory {
   const current = inventoryGet(inv, lang, ref, lex) ?? 0;
   const next = Math.max(floor, current + delta);

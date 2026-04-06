@@ -1,8 +1,8 @@
-import type { TopologyConfig } from "@/lib/schema/topology";
-import type { RNG } from "../rng";
-import type { Topology } from "../topology";
-import { LatticeTopology } from "./lattice";
-import { WellMixedTopology } from "./well-mixed";
+import type { TopologyConfig } from '@/lib/schema/topology';
+import type { RNG } from '../rng';
+import type { Topology } from '../topology';
+import { LatticeTopology } from './lattice';
+import { WellMixedTopology } from './well-mixed';
 
 /**
  * Create the appropriate Topology implementation from a TopologyConfig.
@@ -12,34 +12,26 @@ import { WellMixedTopology } from "./well-mixed";
  * @param size   - population count; required for 'well-mixed' (where the topology config
  *                 carries no inherent size — that comes from WorldConfig.agentCount)
  */
-export function createTopology(
-  config: TopologyConfig,
-  rng: RNG,
-  size?: number,
-): Topology {
+export function createTopology(config: TopologyConfig, rng: RNG, size?: number): Topology {
   switch (config.type) {
-    case "lattice":
-      return new LatticeTopology(
-        config.width,
-        config.height,
-        config.neighborhood,
-      );
+    case 'lattice':
+      return new LatticeTopology(config.width, config.height, config.neighborhood);
 
-    case "well-mixed": {
+    case 'well-mixed': {
       if (size === undefined || size === null) {
         throw new Error(
           "createTopology: 'well-mixed' topology requires a size argument " +
-          "(pass WorldConfig.agentCount as the third parameter)"
+            '(pass WorldConfig.agentCount as the third parameter)',
         );
       }
       return new WellMixedTopology(size);
     }
 
-    case "network":
+    case 'network':
       throw new Error(
-        "createTopology: network topology v1 requires a pre-built graphology Graph; " +
-        "use NetworkTopology.fromAdjacencyMap() or NetworkTopology directly. " +
-        "Config-driven small-world/scale-free generators are deferred to v2."
+        'createTopology: network topology v1 requires a pre-built graphology Graph; ' +
+          'use NetworkTopology.fromAdjacencyMap() or NetworkTopology directly. ' +
+          'Config-driven small-world/scale-free generators are deferred to v2.',
       );
 
     default: {

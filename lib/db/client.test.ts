@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 // Set env vars before any module imports so lib/env.ts parses them at
 // module-load time (it reads process.env eagerly).

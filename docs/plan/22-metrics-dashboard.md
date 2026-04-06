@@ -1,12 +1,12 @@
 ---
-step: "22"
-title: "metrics dashboard"
+step: '22'
+title: 'metrics dashboard'
 kind: ui
 ui: true
 timeout_minutes: 40
 prerequisites:
-  - "step 17: run summary metrics"
-  - "step 21: lattice canvas renderer"
+  - 'step 17: run summary metrics'
+  - 'step 21: lattice canvas renderer'
 ---
 
 ## 1. Goal
@@ -24,12 +24,12 @@ Deliver **F9 (Live metrics dashboard)** from `docs/spec.md` §4.2 as a React cli
 
 ## 3. Spec references
 
-- `docs/spec.md` **§4.2 Live playground mode**, specifically **F9 Live metrics dashboard**: *"A panel of synchronized time-series charts showing the observables from §7: communication success rate, mean token weight, number of distinct tokens (Nw), cluster count, largest-cluster size, assimilation index, segregation index. Acceptance: All seven core metrics update each tick; the researcher can pin any chart to a larger view; Y-axes are auto-scaled with a manual override. Supports: RQ1–RQ5."* This is the **authoritative contract** step 22 delivers. Every chart the dashboard ships traces to one of the enumerated metrics. The "pin any chart to a larger view" clause is satisfied by the pin-to-large-view toggle in section 7 slice eight. The "manual override" clause is satisfied by the `auto | 0..1 | custom` popover in section 7 slice seven. The "update each tick" clause is satisfied by the shell's per-tick buffer append hook in section 7 slice three.
-- `docs/spec.md` **§7.1 Per-tick scalar metrics** — the authoritative table the dashboard's chart list traces to. The F9 enumeration in §4.2 is a subset of §7.1, and step 22 implements exactly that subset, not the full table. In particular: the dashboard does **not** show `matchingRate`, `tokenWeightVariance`, `successRateByClassPair`, `clusterCount` on its own (it ships `largestClusterSize` as the primary cluster signal), or `timeToConsensus` (which is a summary observable from §7.3, not a per-tick observable). The rationale for the subset selection is F9's own wording: *"communication success rate, mean token weight, number of distinct tokens (Nw), cluster count, largest-cluster size, assimilation index, segregation index"* — seven items, which map exactly to seven `ChartPanel` instances in section 7 slice five.
-- `docs/spec.md` **§9 Capability Requirements — "Time-series charts" row**: *"Recharts — React-declarative, TypeScript-friendly. Also viable: Plotly.js for more statistical features; Visx for full control. Notes: Recharts is the path of least friction for success-rate curves and Nw plots."* This is the spec's **explicit recommendation** for the chart library. Step 22 honors it by installing `recharts` as the single charting dependency and pinning the current stable version at execution time. Plotly and Visx are the two rejected alternatives recorded in section 4 paths-not-taken 7 and 8.
+- `docs/spec.md` **§4.2 Live playground mode**, specifically **F9 Live metrics dashboard**: _"A panel of synchronized time-series charts showing the observables from §7: communication success rate, mean token weight, number of distinct tokens (Nw), cluster count, largest-cluster size, assimilation index, segregation index. Acceptance: All seven core metrics update each tick; the researcher can pin any chart to a larger view; Y-axes are auto-scaled with a manual override. Supports: RQ1–RQ5."_ This is the **authoritative contract** step 22 delivers. Every chart the dashboard ships traces to one of the enumerated metrics. The "pin any chart to a larger view" clause is satisfied by the pin-to-large-view toggle in section 7 slice eight. The "manual override" clause is satisfied by the `auto | 0..1 | custom` popover in section 7 slice seven. The "update each tick" clause is satisfied by the shell's per-tick buffer append hook in section 7 slice three.
+- `docs/spec.md` **§7.1 Per-tick scalar metrics** — the authoritative table the dashboard's chart list traces to. The F9 enumeration in §4.2 is a subset of §7.1, and step 22 implements exactly that subset, not the full table. In particular: the dashboard does **not** show `matchingRate`, `tokenWeightVariance`, `successRateByClassPair`, `clusterCount` on its own (it ships `largestClusterSize` as the primary cluster signal), or `timeToConsensus` (which is a summary observable from §7.3, not a per-tick observable). The rationale for the subset selection is F9's own wording: _"communication success rate, mean token weight, number of distinct tokens (Nw), cluster count, largest-cluster size, assimilation index, segregation index"_ — seven items, which map exactly to seven `ChartPanel` instances in section 7 slice five.
+- `docs/spec.md` **§9 Capability Requirements — "Time-series charts" row**: _"Recharts — React-declarative, TypeScript-friendly. Also viable: Plotly.js for more statistical features; Visx for full control. Notes: Recharts is the path of least friction for success-rate curves and Nw plots."_ This is the spec's **explicit recommendation** for the chart library. Step 22 honors it by installing `recharts` as the single charting dependency and pinning the current stable version at execution time. Plotly and Visx are the two rejected alternatives recorded in section 4 paths-not-taken 7 and 8.
 - `docs/spec.md` **§1.2 RQ1 — Assimilation vs. segregation thresholds** and **RQ5 — Quantifying linguistic pressure.** Both research questions are operationalized by the assimilation and segregation indices from step 16, which become the primary signal the researchers will watch during an interactive session. The dashboard's single-series panels for those two indices are therefore the most important visual in the whole F9 surface — they are the metric the researchers need to see in real time to know whether a config parameter tweak moves the system toward assimilation or segregation. Step 22 gives them their own full-width-friendly pin buttons so a researcher mid-investigation can promote them with one click.
-- `docs/spec.md` **§1.2 RQ2 — Role of spatial topology.** RQ2's primary observable per §6's traceability matrix is "cluster count, mean cluster size, time-to-consensus." Largest-cluster size and cluster count are available in the step-16 snapshot; this dashboard plots largest-cluster size (the more diagnostic of the two at a glance). The spec's §2 discussion — *"on a 2D lattice, consensus is reached through a fundamentally different mechanism: topology-induced coarsening. Regional clusters of locally agreeing agents form rapidly, then slowly compete at their boundaries"* — is exactly what a time-series of `largestClusterSize` visualizes. On well-mixed mode the line goes straight up to `N`; on lattice mode it grows slowly through metastable intermediates. The dashboard must not hide that signal; it is one of the reasons F9 is a first-class playground feature.
-- `docs/spec.md` **§11 question 2 "What is the right agent count?"** — *"default to N = 50–500 per world for interactive playground mode [...] and allow headless sweeps up to N = 10⁴ in workers."* The interactive regime is where the dashboard lives; at N ≤ 500 per world with tick rates up to ~60 Hz, the buffer fills at ≤ 60 `TickReport`/s, and a 10-minute session produces ≤ 36,000 reports. The 10,000-tick circular buffer cap documented in section 7 slice two is chosen to exceed the longest plausible interactive session without unbounded growth; longer sessions will drop the earliest ticks but retain the most recent 10,000, which is the regime the researcher is actually watching. Display down-sampling to `≤ 1,000` points is chosen so a single `LineChart`'s SVG path never carries more than 1,000 points, matching the Recharts performance guidance in section 4 research note 5.
+- `docs/spec.md` **§1.2 RQ2 — Role of spatial topology.** RQ2's primary observable per §6's traceability matrix is "cluster count, mean cluster size, time-to-consensus." Largest-cluster size and cluster count are available in the step-16 snapshot; this dashboard plots largest-cluster size (the more diagnostic of the two at a glance). The spec's §2 discussion — _"on a 2D lattice, consensus is reached through a fundamentally different mechanism: topology-induced coarsening. Regional clusters of locally agreeing agents form rapidly, then slowly compete at their boundaries"_ — is exactly what a time-series of `largestClusterSize` visualizes. On well-mixed mode the line goes straight up to `N`; on lattice mode it grows slowly through metastable intermediates. The dashboard must not hide that signal; it is one of the reasons F9 is a first-class playground feature.
+- `docs/spec.md` **§11 question 2 "What is the right agent count?"** — _"default to N = 50–500 per world for interactive playground mode [...] and allow headless sweeps up to N = 10⁴ in workers."_ The interactive regime is where the dashboard lives; at N ≤ 500 per world with tick rates up to ~60 Hz, the buffer fills at ≤ 60 `TickReport`/s, and a 10-minute session produces ≤ 36,000 reports. The 10,000-tick circular buffer cap documented in section 7 slice two is chosen to exceed the longest plausible interactive session without unbounded growth; longer sessions will drop the earliest ticks but retain the most recent 10,000, which is the regime the researcher is actually watching. Display down-sampling to `≤ 1,000` points is chosen so a single `LineChart`'s SVG path never carries more than 1,000 points, matching the Recharts performance guidance in section 4 research note 5.
 
 ## 4. Research notes
 
@@ -39,7 +39,7 @@ Deliver **F9 (Live metrics dashboard)** from `docs/spec.md` §4.2 as a React cli
 
 2. `node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md` §"Language features" and §"Module resolution". Confirms Turbopack is the default bundler in Next 16 and that it reads `tsconfig.json` path aliases across the unified module graph. **Load-bearing facts for step 22**: (a) `recharts` is an ESM package with a plain `import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'` call; Turbopack resolves it identically in both server and client chunks without any `next.config.ts` knobs or `serverExternalPackages` entries — no custom loader, no legacy webpack configuration. (b) Recharts' CommonJS-era baggage (it historically shipped both CJS and ESM builds) is transparent to Turbopack as long as the package's `exports` field points at the right files, which it has done since Recharts v2.x. The v3.x line the current stable (v3.8.1 per section 8) is cleanly ESM, so there is zero bundler risk. (c) The `'use client'` directive is a Turbopack-recognized boundary that emits a separate client chunk for the dashboard; a Server Component importing `metrics-dashboard.tsx` is valid because the transform automatically generates the RSC → client shim. This is the same pattern the step-21 `SimulationShell` already uses.
 
-3. `node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md` — establishes Vitest as the supported test runner for Next 16 and documents the `node` / `happy-dom` environment split. **Load-bearing facts for step 22**: (a) the circular buffer unit test in `metrics-history.test.ts` is a pure-function test against a data structure with zero React or DOM dependencies — it runs under Vitest's default `node` environment, consistent with the `CLAUDE.md` "Testing conventions" rule *"Tests colocate next to source as `*.test.ts`"* and with step 15's `lib/sim/metrics/scalar.test.ts` precedent. (b) The dashboard component itself is **not** unit-tested under `happy-dom` — Recharts' `ResponsiveContainer` uses `ResizeObserver`, which happy-dom stubs but does not implement faithfully, and the component's correctness is covered end-to-end by the MCP script in section 10 that reads the real rendered SVG. This decision mirrors the step-21 rule to let MCP be the UI-verification layer and Vitest be the pure-logic layer.
+3. `node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md` — establishes Vitest as the supported test runner for Next 16 and documents the `node` / `happy-dom` environment split. **Load-bearing facts for step 22**: (a) the circular buffer unit test in `metrics-history.test.ts` is a pure-function test against a data structure with zero React or DOM dependencies — it runs under Vitest's default `node` environment, consistent with the `CLAUDE.md` "Testing conventions" rule _"Tests colocate next to source as `_.test.ts`"* and with step 15's `lib/sim/metrics/scalar.test.ts`precedent. (b) The dashboard component itself is **not** unit-tested under`happy-dom`— Recharts'`ResponsiveContainer`uses`ResizeObserver`, which happy-dom stubs but does not implement faithfully, and the component's correctness is covered end-to-end by the MCP script in section 10 that reads the real rendered SVG. This decision mirrors the step-21 rule to let MCP be the UI-verification layer and Vitest be the pure-logic layer.
 
 4. `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md` — the App Router `layout.tsx` contract. Relevant because step 22 does **not** add or modify any layout file; the `app/(auth)/layout.tsx` shell created in step 07 already wraps the playground page with the authenticated header and nav, and `app/(auth)/playground/page.tsx` from step 21 already hosts the `SimulationShell`. Step 22's new files are all siblings of the shell file, not layout children, so no layout changes are needed. This citation is included to explicitly record the no-change status against the file convention most likely to be accidentally touched by a careless edit.
 
@@ -57,9 +57,16 @@ Deliver **F9 (Live metrics dashboard)** from `docs/spec.md` §4.2 as a React cli
          <YAxis domain={yDomain} tick={{ fontSize: 11 }} stroke="#9ca3af" />
          <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151' }} />
          <Legend wrapperStyle={{ fontSize: 12 }} />
-         {series.map(s => (
-           <Line key={s.dataKey} dataKey={s.dataKey} name={s.name} stroke={s.color}
-                 dot={false} isAnimationActive={false} strokeWidth={1.5} />
+         {series.map((s) => (
+           <Line
+             key={s.dataKey}
+             dataKey={s.dataKey}
+             name={s.name}
+             stroke={s.color}
+             dot={false}
+             isAnimationActive={false}
+             strokeWidth={1.5}
+           />
          ))}
        </LineChart>
      </ResponsiveContainer>
@@ -80,7 +87,7 @@ Deliver **F9 (Live metrics dashboard)** from `docs/spec.md` §4.2 as a React cli
    - `#0072B2` (blue)
    - `#D55E00` (vermillion)
    - `#CC79A7` (reddish purple)
-   The dashboard uses at most three distinct colors per chart (e.g. world1 / world2 / combined for the success-rate chart), so a 7-color palette comfortably covers the worst case. The `CC79A7` pink is held as a reserve and the rest are assigned in order of appearance across chart types. This palette was chosen over ColorBrewer's `Set2`/`Dark2` schemes because Okabe-Ito is specifically tuned for categorical series on dark backgrounds (the playground uses the step-07 authenticated-layout dark theme) while ColorBrewer's qualitative schemes are tuned for light backgrounds and cartographic maps. The tradeoff is documented and revisitable; if the researchers prefer a warmer palette in a later step, swap the `SERIES_COLORS` constant — everything else stays the same.
+     The dashboard uses at most three distinct colors per chart (e.g. world1 / world2 / combined for the success-rate chart), so a 7-color palette comfortably covers the worst case. The `CC79A7` pink is held as a reserve and the rest are assigned in order of appearance across chart types. This palette was chosen over ColorBrewer's `Set2`/`Dark2` schemes because Okabe-Ito is specifically tuned for categorical series on dark backgrounds (the playground uses the step-07 authenticated-layout dark theme) while ColorBrewer's qualitative schemes are tuned for light backgrounds and cartographic maps. The tradeoff is documented and revisitable; if the researchers prefer a warmer palette in a later step, swap the `SERIES_COLORS` constant — everything else stays the same.
 
 **Paths not taken:**
 
@@ -90,7 +97,7 @@ Deliver **F9 (Live metrics dashboard)** from `docs/spec.md` §4.2 as a React cli
 
 10. **Sharing the metrics buffer via React Context instead of prop drilling.** Considered and chosen as an **intermediate** design: the `SimulationShell` already holds the metrics history in a React state (step 21), and the dashboard is a direct child of the shell. There are two viable shapes for the hand-off: (a) `<MetricsDashboard history={metricsHistory} />` prop drilling from the shell, and (b) a `MetricsContext` that the shell provides and the dashboard consumes via `useContext`. Step 22 picks **(a) prop drilling** for v1 because the shell and dashboard are sibling components in the same directory with exactly one parent-child link between them — introducing a context for a single hop is over-engineering. If step 23 (network view) or a future panel also needs the same history, the refactor to a context is a five-minute change because the prop shape becomes the context shape unchanged. Section 7 slice four documents the prop signature; section 11 notes that the hand-off can be promoted to a context in a future step without touching the dashboard's internals.
 
-11. **Server-rendering the dashboard via `next/dynamic(..., { ssr: false })` instead of `'use client'`.** Considered and rejected. `next/dynamic` with `ssr: false` is an alternative to the `'use client'` directive for suppressing server rendering of a component. The rejection rationale: (a) `'use client'` is the modern Next 16 idiom for declaring a client boundary — the `'use client'` directive is checked at transform time and emits a cleaner chunk boundary than `next/dynamic`, which adds a runtime loading fallback component; (b) `'use client'` composes cleanly with the existing `SimulationShell`, which is already a client component, so the entire dashboard lives inside the same client tree with zero dynamic-import overhead; (c) `CLAUDE.md` "Worker lifecycle" documents the two options and says *"Pick one and document it in the step's plan file"* — step 21 picked `'use client'` for the shell, and step 22 follows the same discipline for consistency. `next/dynamic` remains available as a fallback if some future step discovers a Recharts component that cannot be tree-shaken from a server bundle at all; for v1 the directive is sufficient.
+11. **Server-rendering the dashboard via `next/dynamic(..., { ssr: false })` instead of `'use client'`.** Considered and rejected. `next/dynamic` with `ssr: false` is an alternative to the `'use client'` directive for suppressing server rendering of a component. The rejection rationale: (a) `'use client'` is the modern Next 16 idiom for declaring a client boundary — the `'use client'` directive is checked at transform time and emits a cleaner chunk boundary than `next/dynamic`, which adds a runtime loading fallback component; (b) `'use client'` composes cleanly with the existing `SimulationShell`, which is already a client component, so the entire dashboard lives inside the same client tree with zero dynamic-import overhead; (c) `CLAUDE.md` "Worker lifecycle" documents the two options and says _"Pick one and document it in the step's plan file"_ — step 21 picked `'use client'` for the shell, and step 22 follows the same discipline for consistency. `next/dynamic` remains available as a fallback if some future step discovers a Recharts component that cannot be tree-shaken from a server bundle at all; for v1 the directive is sufficient.
 
 12. **Streaming the history buffer out of the worker via a `Comlink.proxy` callback on every tick.** Considered and chosen as the **default** pattern, with a fallback to pull-based polling. The step-specific context says "Pick one pattern and document it." The decision: **use the `onProgress` callback already exposed by `SimulationWorkerApi.run(totalTicks, onProgress)`** from step 20. The shell wraps a main-thread handler with `Comlink.proxy(...)` per the step-20 JSDoc requirement and passes it into `run()`. Every tick the worker invokes the callback with the new `TickReport`, the handler calls `dispatchMetrics(report)` which pushes into the circular buffer, and React re-renders the dashboard with the updated buffer view. This is a push-based design with no extra polling and no duplicated data path. The rejected alternative was a `setInterval`-based polling loop on the main thread that calls `api.getMetrics()` every 100 ms; the rejection rationale is that polling creates two sources of truth (the worker's `state.timeSeries` array and the main thread's buffer), and the synchronization edge cases (what happens if the poll interval drifts relative to the tick rate?) are exactly the bug class the callback model avoids. The `onProgress` callback is also cheaper at high tick rates because it is invoked exactly once per tick with the exact data already in hand, whereas polling at 100 ms intervals either misses ticks at a 60 Hz rate (only every ~6th tick is sampled) or wastes cycles by polling more often than new data arrives. The chosen pattern is documented in section 7 slice three and in the `MetricsHistory` JSDoc so step 24 (interactive controls) can follow the same pattern when it wires start/pause/step controls.
 
@@ -107,11 +114,12 @@ Total research items: **4 local Next docs** (server-and-client-components.md, tu
   - `function getHistoryWindow(history: MetricsHistory, maxPoints: number): TickReport[]` — returns a **down-sampled, chronologically ordered** read view. If `history.length <= maxPoints`, returns every stored tick in chronological order (unwrapping the ring). Otherwise, returns `maxPoints` evenly-spaced ticks from oldest to newest using a `stride = Math.ceil(history.length / maxPoints)` and picking every `stride`-th entry, **with the most-recent entry always included as the last element** (per the step-specific context's "assert the most recent point is always included"). The returned array is a fresh `TickReport[]` — the ring-to-linear unwrap is a necessary allocation, and happens at most once per render, so it does not dominate the frame budget. The function is pure: same inputs → same outputs, no RNG, no wall clock.
   - `function clearHistory(history: MetricsHistory): MetricsHistory` — resets `head` and `length` to 0 without deallocating `buffer`. Used by step 24's reset-button path (not by step 22's acceptance flow). Included here so step 24 does not have to add it as a follow-up.
   - `type TickReport` — **re-exported** from the worker's type surface at `@/workers/simulation.worker` (or whichever path step 20 chose to route the type through, per section 2 prerequisites). The re-export is a `type` re-export so it is erased at compile time and the worker module is not pulled into the main-thread bundle.
-  - The file header comment states: *"Pure, React-free, DOM-free circular buffer for TickReport time-series. Used by metrics-dashboard.tsx to cap memory usage and down-sample very long runs for display. See `docs/plan/22-metrics-dashboard.md` §7 slice two for the design rationale."*
+  - The file header comment states: _"Pure, React-free, DOM-free circular buffer for TickReport time-series. Used by metrics-dashboard.tsx to cap memory usage and down-sample very long runs for display. See `docs/plan/22-metrics-dashboard.md` §7 slice two for the design rationale."_
 
 - `app/(auth)/playground/metrics-history.test.ts` — the **Vitest suite for the buffer**. Runs under the default `node` environment (no React, no DOM). Contains the tests enumerated in section 9. File size: ~120 lines.
 
 - `app/(auth)/playground/chart-panel.tsx` — the **shared wrapper** used by the top-level dashboard to render any single chart. Starts with the `'use client'` directive. Exports `ChartPanel(props)` where `props` is:
+
   ```typescript
   interface ChartPanelProps {
     title: string;
@@ -127,15 +135,18 @@ Total research items: **4 local Next docs** (server-and-client-components.md, tu
     testId?: string;
   }
   ```
+
   The panel renders a bordered container with a header row containing the title, a Y-axis-mode popover trigger, and a pin toggle button. The chart body is a `<ResponsiveContainer>` wrapping a `<LineChart>` with the props listed in section 4 research note 5. The Y-axis-mode popover is a plain `useState`-driven `<div>` that opens on click of the mode button, contains three radio choices ("Auto", "0 to 1", "Custom min/max"), and — for "Custom" — two `<input type="number">` fields that call `onYAxisModeChange('custom', min, max)` on change. No Radix UI, no Headless UI, no popover library — plain conditional rendering. The pin toggle is a button with `aria-pressed={isPinned}` and an up-arrow glyph; clicking it calls `onPinToggle()`. When `isPinned` is true, the panel's outer wrapper gets the Tailwind class `col-span-full row-span-2 min-h-[24rem]` so it spans the full dashboard grid; when false, the default class is `col-span-1 min-h-[14rem]`. The `syncId` prop is passed through to `<LineChart syncId={syncId}>` so every panel in the dashboard shares the same tooltip crosshair. The `testId` prop is rendered as `data-testid` on the outer wrapper so the MCP script can locate each panel by ID (see section 10). File size: ~160 lines.
 
 - `app/(auth)/playground/metrics-dashboard.tsx` — the **top-level dashboard component**, a client component starting with `'use client'`. Imports: `ChartPanel` from `./chart-panel`, `getHistoryWindow` and the `MetricsHistory` / `TickReport` types from `./metrics-history`, and nothing from `'recharts'` directly (all Recharts imports live inside `chart-panel.tsx`). Exports a default `MetricsDashboard` component whose props signature is:
+
   ```typescript
   interface MetricsDashboardProps {
     history: MetricsHistory;
     maxDisplayPoints?: number; // defaults to 1000
   }
   ```
+
   The component uses `React.useMemo` to compute the down-sampled view from `history` once per render, then shapes the view into **seven** `data` arrays — one per chart — by mapping the `TickReport[]` into per-chart `Array<Record<string, number | null>>` shapes. For example, the success-rate chart's data is `view.map(report => ({ tick: report.tick, world1: report.scalar.world1.successRate.rate, world2: report.scalar.world2.successRate.rate, overall: report.scalar.overall.successRate.rate }))`. The component holds its own local state for (a) a `Record<string, YAxisConfig>` keyed by chart ID tracking each chart's Y-axis override, and (b) a `string | null` of the currently pinned chart ID (so at most one chart is pinned at a time — pinning a second unpins the first). It renders a responsive grid `<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">` and maps over the seven chart configurations to produce seven `<ChartPanel>` instances. The grid is reshuffled when a chart is pinned: the pinned panel renders first with `col-span-full`, followed by the other six in the regular grid. File size: ~220 lines.
 
   **The seven charts** (enumerated explicitly so the implementation cannot drift):
@@ -180,11 +191,11 @@ The work is ordered so the dependency arrows point forward: install Recharts fir
 ```tsx
 // Before step 22 (step 21's shape):
 const [metrics, setMetrics] = useState<TickReport[]>([]);
-const onTick = (report: TickReport) => setMetrics(m => [...m, report]);
+const onTick = (report: TickReport) => setMetrics((m) => [...m, report]);
 
 // After step 22:
 const [history, setHistory] = useState<MetricsHistory>(() => createMetricsHistory(10_000));
-const onTick = (report: TickReport) => setHistory(h => appendTick(h, report));
+const onTick = (report: TickReport) => setHistory((h) => appendTick(h, report));
 ```
 
 Replace any read of `metrics` inside the shell (e.g. to display the current tick number) with a computation against `history.length` or `getHistoryWindow(history, 1)[0]?.tick`. Import `MetricsDashboard` and render it beside the lattice canvas. Keep the `onProgress` callback wrapped in `Comlink.proxy(...)` as step 21 set up — step 22 does not touch the Comlink marshalling contract.
@@ -255,34 +266,43 @@ The `YAxisPopover` is a small nested component (same file, not exported) that re
 
 ```tsx
 export function MetricsDashboard({ history, maxDisplayPoints = 1000 }: MetricsDashboardProps) {
-  const view = useMemo(() => getHistoryWindow(history, maxDisplayPoints), [history, maxDisplayPoints]);
-  const chartData = useMemo(
-    () => Object.fromEntries(
-      CHART_CONFIGS.map(c => [c.id, view.map(c.shaper)])
-    ),
-    [view]
+  const view = useMemo(
+    () => getHistoryWindow(history, maxDisplayPoints),
+    [history, maxDisplayPoints],
   );
-  const [yAxisConfigs, setYAxisConfigs] = useState<Record<string, { mode: 'auto' | 'zeroOne' | 'custom'; min?: number; max?: number }>>(() => ({
+  const chartData = useMemo(
+    () => Object.fromEntries(CHART_CONFIGS.map((c) => [c.id, view.map(c.shaper)])),
+    [view],
+  );
+  const [yAxisConfigs, setYAxisConfigs] = useState<
+    Record<string, { mode: 'auto' | 'zeroOne' | 'custom'; min?: number; max?: number }>
+  >(() => ({
     'success-rate': { mode: 'auto' },
     'distinct-tokens': { mode: 'auto' },
     'mean-weight': { mode: 'auto' },
     'largest-cluster': { mode: 'auto' },
-    'modularity': { mode: 'auto' },
-    'assimilation': { mode: 'zeroOne' },
-    'segregation': { mode: 'auto' },
+    modularity: { mode: 'auto' },
+    assimilation: { mode: 'zeroOne' },
+    segregation: { mode: 'auto' },
   }));
   const [pinnedChartId, setPinnedChartId] = useState<string | null>(null);
 
   const orderedConfigs = pinnedChartId
-    ? [CHART_CONFIGS.find(c => c.id === pinnedChartId)!, ...CHART_CONFIGS.filter(c => c.id !== pinnedChartId)]
+    ? [
+        CHART_CONFIGS.find((c) => c.id === pinnedChartId)!,
+        ...CHART_CONFIGS.filter((c) => c.id !== pinnedChartId),
+      ]
     : CHART_CONFIGS;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4" data-testid="metrics-dashboard">
+    <div
+      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4"
+      data-testid="metrics-dashboard"
+    >
       <div className="col-span-full text-sm text-gray-400" data-testid="current-tick">
         Tick: {view[view.length - 1]?.tick ?? 0}
       </div>
-      {orderedConfigs.map(config => (
+      {orderedConfigs.map((config) => (
         <ChartPanel
           key={config.id}
           testId={`chart-${config.id}`}
@@ -294,10 +314,10 @@ export function MetricsDashboard({ history, maxDisplayPoints = 1000 }: MetricsDa
           yAxisCustomMin={yAxisConfigs[config.id].min}
           yAxisCustomMax={yAxisConfigs[config.id].max}
           onYAxisModeChange={(mode, min, max) =>
-            setYAxisConfigs(prev => ({ ...prev, [config.id]: { mode, min, max } }))
+            setYAxisConfigs((prev) => ({ ...prev, [config.id]: { mode, min, max } }))
           }
           isPinned={pinnedChartId === config.id}
-          onPinToggle={() => setPinnedChartId(prev => (prev === config.id ? null : config.id))}
+          onPinToggle={() => setPinnedChartId((prev) => (prev === config.id ? null : config.id))}
         />
       ))}
     </div>

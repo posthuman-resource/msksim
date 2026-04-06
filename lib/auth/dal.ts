@@ -13,10 +13,7 @@ import { redirect } from 'next/navigation';
 
 import { users } from '@/db/schema';
 import { db } from '@/lib/db/client';
-import {
-  getSessionTokenFromCookie,
-  validateSession,
-} from '@/lib/auth/sessions';
+import { getSessionTokenFromCookie, validateSession } from '@/lib/auth/sessions';
 
 export type Session = { userId: string; expiresAt: Date };
 

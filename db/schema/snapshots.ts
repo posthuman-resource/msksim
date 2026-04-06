@@ -27,7 +27,7 @@ export const snapshots = sqliteTable(
   (table) => [
     // Serves "all snapshots for run X ordered by tick" — the replay view's primary query.
     index('snapshots_run_tick_idx').on(table.runId, table.tick),
-  ]
+  ],
 );
 
 export type Snapshot = typeof snapshots.$inferSelect;

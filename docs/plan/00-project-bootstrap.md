@@ -1,6 +1,6 @@
 ---
-step: "00"
-title: "project bootstrap"
+step: '00'
+title: 'project bootstrap'
 kind: foundation
 ui: false
 timeout_minutes: 20

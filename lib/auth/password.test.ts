@@ -49,10 +49,7 @@ describe('users table insert roundtrip', () => {
 
     await db.insert(users).values({ username: 'alice', passwordHash });
 
-    const [row] = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, 'alice'));
+    const [row] = await db.select().from(users).where(eq(users.username, 'alice'));
 
     expect(row).toBeDefined();
     expect(row.id).toBeTruthy();

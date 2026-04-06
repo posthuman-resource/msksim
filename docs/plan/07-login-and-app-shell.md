@@ -1,12 +1,12 @@
 ---
-step: "07"
-title: "login and app shell"
+step: '07'
+title: 'login and app shell'
 kind: foundation
 ui: true
 timeout_minutes: 40
 prerequisites:
-  - "step 05: cli user management"
-  - "step 06: proxy route groups and dal"
+  - 'step 05: cli user management'
+  - 'step 06: proxy route groups and dal'
 ---
 
 ## 1. Goal
@@ -23,8 +23,8 @@ Build the **first UI surface** of msksim: a Server-Component login page at `app/
 
 ## 3. Spec references
 
-- `docs/spec.md` §10 "Out of Scope" explicitly lists *"Multi-user / server-side orchestration. The app runs entirely in the researcher's browser. There is no shared backend, no user accounts, no collaboration over the network."* Authentication is **not a spec feature** — it is a user override recorded in CLAUDE.md "Stack and versions" (*"`@node-rs/argon2` for password hashing, server-side table-backed sessions with HttpOnly cookies. All routes are gated for v1."*). Step 07 is the UI layer of that override; every decision in this plan must stay inside the override's envelope (single-user, table-backed, no multi-device flows, no account creation UI — the CLI in step 05 is the only user-creation surface).
-- `docs/spec.md` §5.1 "Researcher stories" (e.g. US-7 *"save a run today and revisit it tomorrow"*) implicitly requires **session persistence across days**: a researcher opens the app in the morning, closes the laptop, and expects to resume without re-authenticating in the middle of their workflow. The 7-day default TTL locked in by step 04 covers this story; no override needed for this step.
+- `docs/spec.md` §10 "Out of Scope" explicitly lists _"Multi-user / server-side orchestration. The app runs entirely in the researcher's browser. There is no shared backend, no user accounts, no collaboration over the network."_ Authentication is **not a spec feature** — it is a user override recorded in CLAUDE.md "Stack and versions" (_"`@node-rs/argon2` for password hashing, server-side table-backed sessions with HttpOnly cookies. All routes are gated for v1."_). Step 07 is the UI layer of that override; every decision in this plan must stay inside the override's envelope (single-user, table-backed, no multi-device flows, no account creation UI — the CLI in step 05 is the only user-creation surface).
+- `docs/spec.md` §5.1 "Researcher stories" (e.g. US-7 _"save a run today and revisit it tomorrow"_) implicitly requires **session persistence across days**: a researcher opens the app in the morning, closes the laptop, and expects to resume without re-authenticating in the middle of their workflow. The 7-day default TTL locked in by step 04 covers this story; no override needed for this step.
 - CLAUDE.md "Authentication patterns" fixes the layering: proxy does cookie-presence only, DAL does the real check, every Server Component in `(auth)` calls `verifySession()`. This step's layout and home page and nav stubs all obey that contract — the layout calls `verifySession()` once at the top, and each nav stub page **also** calls `verifySession()` at its own top even though the layout already ran. The docs are explicit that relying on layout alone is unsafe because a future refactor can silently strip coverage.
 - CLAUDE.md "UI verification harness" (60-line cap) already documents the harness rules from Phase A of meta-planning. This step is the **first** consumer of that section and thus the first step that runs a chrome-devtools MCP script end-to-end. If any rule in the existing section turns out to be wrong or under-specified once the implementing claude runs the script for real, this step is the place to clarify it — but the clarifications go in CLAUDE.md under the same section cap and **must not** exceed 20 appended lines (see §11).
 
@@ -88,7 +88,7 @@ Total citations: eight local Next docs (sources 1-8), two external URLs WebFetch
   - Render `<main>{children}</main>` below the nav.
   - Tailwind classes only; no `<style>` tags, no CSS-in-JS.
 
-- `app/(auth)/page.tsx` — replace the step-06 placeholder body. Still a Server Component, still calls `await verifySession()` at the top (the DAL call is redundant with the layout's but required by the "every Server Component calls verifySession directly" contract in CLAUDE.md "Authentication patterns"). Renders a Tailwind card with `<h1>Welcome, {user.username}</h1>`, a short paragraph describing msksim in one sentence (*"An agent-based simulation of a Naming Game for studying how color-term communication success emerges under geographic and linguistic pressure."*), and three links to the nav stubs. No client component, no interactivity.
+- `app/(auth)/page.tsx` — replace the step-06 placeholder body. Still a Server Component, still calls `await verifySession()` at the top (the DAL call is redundant with the layout's but required by the "every Server Component calls verifySession directly" contract in CLAUDE.md "Authentication patterns"). Renders a Tailwind card with `<h1>Welcome, {user.username}</h1>`, a short paragraph describing msksim in one sentence (_"An agent-based simulation of a Naming Game for studying how color-term communication success emerges under geographic and linguistic pressure."_), and three links to the nav stubs. No client component, no interactivity.
 
 - `CLAUDE.md` — see §11. The "UI verification harness" and "Authentication patterns" sections receive short appends documenting any clarifications discovered during the run; totals bounded by §11.
 

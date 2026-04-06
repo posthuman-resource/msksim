@@ -24,11 +24,13 @@ export async function insertTickMetrics(
     world: 'world1' | 'world2' | 'both';
     metricName: string;
     metricValue: number;
-  }>
+  }>,
 ): Promise<void> {
   db.transaction((tx) => {
     for (const row of rows) {
-      tx.insert(tickMetrics).values({ runId, ...row }).run();
+      tx.insert(tickMetrics)
+        .values({ runId, ...row })
+        .run();
     }
   });
 }
@@ -40,10 +42,7 @@ export async function insertTickMetrics(
  * If metricName is provided, the query uses the tick_metrics_run_metric_idx index.
  * Otherwise it falls back to the composite primary key scan (still indexed on runId first).
  */
-export async function loadTickMetrics(
-  runId: string,
-  metricName?: string
-): Promise<TickMetric[]> {
+export async function loadTickMetrics(runId: string, metricName?: string): Promise<TickMetric[]> {
   const conditions = [eq(tickMetrics.runId, runId)];
   if (metricName !== undefined) {
     conditions.push(eq(tickMetrics.metricName, metricName));

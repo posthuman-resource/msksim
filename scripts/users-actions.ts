@@ -40,7 +40,7 @@ export class UserNotFoundError extends Error {
 export async function addUser(
   username: string,
   password: string,
-  db: Db = defaultDb
+  db: Db = defaultDb,
 ): Promise<void> {
   const existing = db
     .select({ id: users.id })
@@ -84,11 +84,7 @@ export async function removeUser(username: string, db: Db = defaultDb): Promise<
  * table is empty — not an error.
  */
 export async function listUsers(db: Db = defaultDb): Promise<string[]> {
-  const rows = db
-    .select({ username: users.username })
-    .from(users)
-    .orderBy(users.username)
-    .all();
+  const rows = db.select({ username: users.username }).from(users).orderBy(users.username).all();
 
   return rows.map((r) => r.username);
 }
@@ -104,7 +100,7 @@ export async function listUsers(db: Db = defaultDb): Promise<string[]> {
 export async function changePassword(
   username: string,
   newPassword: string,
-  db: Db = defaultDb
+  db: Db = defaultDb,
 ): Promise<void> {
   const passwordHash = await hashPassword(newPassword);
 

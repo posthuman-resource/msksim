@@ -15,12 +15,10 @@ export default async function HomePage() {
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm">
-      <h1 className="text-xl font-bold text-zinc-900">
-        Welcome, {user.username}
-      </h1>
+      <h1 className="text-xl font-bold text-zinc-900">Welcome, {user.username}</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        An agent-based simulation of a Naming Game for studying how color-term
-        communication success emerges under geographic and linguistic pressure.
+        An agent-based simulation of a Naming Game for studying how color-term communication success
+        emerges under geographic and linguistic pressure.
       </p>
       <nav className="mt-6 flex gap-4" aria-label="home shortcuts">
         <Link

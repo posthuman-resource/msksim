@@ -23,7 +23,9 @@ export const runs = sqliteTable('runs', {
   })
     .notNull()
     .$defaultFn(() => 'pending' as const),
-  tickCount: integer('tick_count').notNull().$defaultFn(() => 0),
+  tickCount: integer('tick_count')
+    .notNull()
+    .$defaultFn(() => 0),
   // Nullable opaque JSON TEXT: end-of-run summary metrics filled by finishRun.
   summaryJson: text('summary_json'),
   // Nullable: set at run completion by finishRun.

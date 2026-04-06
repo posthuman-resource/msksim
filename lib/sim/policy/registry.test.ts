@@ -1,18 +1,18 @@
-import { describe, expect, it } from "vitest";
-import { createRNG } from "@/lib/sim/rng";
-import { makeAgentId, emptyInventory, inventorySet } from "@/lib/sim/types";
-import type { AgentState } from "@/lib/sim/types";
-import type { AgentClass, Language, Referent, TokenLexeme, Weight } from "@/lib/schema/primitives";
-import type { LanguagePolicyEntry } from "@/lib/schema/policy";
-import type { PolicyConfig, PolicyName } from "@/lib/sim/policy";
-import { POLICY_NAMES, createPolicy, listPolicies } from "./registry";
-import { createDefaultPolicy } from "./default";
-import { alwaysL1, alwaysL2, random, mirrorHearer } from "./alternatives";
+import { describe, expect, it } from 'vitest';
+import { createRNG } from '@/lib/sim/rng';
+import { makeAgentId, emptyInventory, inventorySet } from '@/lib/sim/types';
+import type { AgentState } from '@/lib/sim/types';
+import type { AgentClass, Language, Referent, TokenLexeme, Weight } from '@/lib/schema/primitives';
+import type { LanguagePolicyEntry } from '@/lib/schema/policy';
+import type { PolicyConfig, PolicyName } from '@/lib/sim/policy';
+import { POLICY_NAMES, createPolicy, listPolicies } from './registry';
+import { createDefaultPolicy } from './default';
+import { alwaysL1, alwaysL2, random, mirrorHearer } from './alternatives';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-const L1 = "L1" as Language;
-const L2 = "L2" as Language;
+const L1 = 'L1' as Language;
+const L2 = 'L2' as Language;
 
 function makeAgent(agentClass: AgentClass): AgentState {
   return {
@@ -26,25 +26,40 @@ function makeAgent(agentClass: AgentClass): AgentState {
 
 /** Full 4×4 default entries — sufficient for any (speakerClass, hearerClass) pair. */
 const FULL_ENTRIES: LanguagePolicyEntry[] = [
-  { speakerClass: "W1-Mono", hearerClass: "W1-Mono", ruleId: "always-l1" },
-  { speakerClass: "W1-Mono", hearerClass: "W1-Bi", ruleId: "always-l1" },
-  { speakerClass: "W1-Mono", hearerClass: "W2-Native", ruleId: "always-l1" },
-  { speakerClass: "W1-Mono", hearerClass: "W2-Immigrant", ruleId: "always-l1" },
-  { speakerClass: "W1-Bi", hearerClass: "W1-Mono", ruleId: "w1bi-to-w1mono-always-l1" },
-  { speakerClass: "W1-Bi", hearerClass: "W1-Bi", ruleId: "w1bi-to-w1bi-configurable", languageBias: { L1: 0.5, L2: 0.5 } },
-  { speakerClass: "W1-Bi", hearerClass: "W2-Native", ruleId: "always-l1" },
-  { speakerClass: "W1-Bi", hearerClass: "W2-Immigrant", ruleId: "always-l1" },
-  { speakerClass: "W2-Native", hearerClass: "W1-Mono", ruleId: "always-l2" },
-  { speakerClass: "W2-Native", hearerClass: "W1-Bi", ruleId: "always-l2" },
-  { speakerClass: "W2-Native", hearerClass: "W2-Native", ruleId: "always-l2" },
-  { speakerClass: "W2-Native", hearerClass: "W2-Immigrant", ruleId: "always-l2" },
-  { speakerClass: "W2-Immigrant", hearerClass: "W1-Mono", ruleId: "always-l1" },
-  { speakerClass: "W2-Immigrant", hearerClass: "W1-Bi", ruleId: "always-l1" },
-  { speakerClass: "W2-Immigrant", hearerClass: "W2-Native", ruleId: "w2imm-to-w2native-both", languageBias: { L1: 0.5, L2: 0.5 } },
-  { speakerClass: "W2-Immigrant", hearerClass: "W2-Immigrant", ruleId: "w2imm-to-w2imm-both", languageBias: { L1: 0.5, L2: 0.5 } },
+  { speakerClass: 'W1-Mono', hearerClass: 'W1-Mono', ruleId: 'always-l1' },
+  { speakerClass: 'W1-Mono', hearerClass: 'W1-Bi', ruleId: 'always-l1' },
+  { speakerClass: 'W1-Mono', hearerClass: 'W2-Native', ruleId: 'always-l1' },
+  { speakerClass: 'W1-Mono', hearerClass: 'W2-Immigrant', ruleId: 'always-l1' },
+  { speakerClass: 'W1-Bi', hearerClass: 'W1-Mono', ruleId: 'w1bi-to-w1mono-always-l1' },
+  {
+    speakerClass: 'W1-Bi',
+    hearerClass: 'W1-Bi',
+    ruleId: 'w1bi-to-w1bi-configurable',
+    languageBias: { L1: 0.5, L2: 0.5 },
+  },
+  { speakerClass: 'W1-Bi', hearerClass: 'W2-Native', ruleId: 'always-l1' },
+  { speakerClass: 'W1-Bi', hearerClass: 'W2-Immigrant', ruleId: 'always-l1' },
+  { speakerClass: 'W2-Native', hearerClass: 'W1-Mono', ruleId: 'always-l2' },
+  { speakerClass: 'W2-Native', hearerClass: 'W1-Bi', ruleId: 'always-l2' },
+  { speakerClass: 'W2-Native', hearerClass: 'W2-Native', ruleId: 'always-l2' },
+  { speakerClass: 'W2-Native', hearerClass: 'W2-Immigrant', ruleId: 'always-l2' },
+  { speakerClass: 'W2-Immigrant', hearerClass: 'W1-Mono', ruleId: 'always-l1' },
+  { speakerClass: 'W2-Immigrant', hearerClass: 'W1-Bi', ruleId: 'always-l1' },
+  {
+    speakerClass: 'W2-Immigrant',
+    hearerClass: 'W2-Native',
+    ruleId: 'w2imm-to-w2native-both',
+    languageBias: { L1: 0.5, L2: 0.5 },
+  },
+  {
+    speakerClass: 'W2-Immigrant',
+    hearerClass: 'W2-Immigrant',
+    ruleId: 'w2imm-to-w2imm-both',
+    languageBias: { L1: 0.5, L2: 0.5 },
+  },
 ];
 
-function makeDefaultConfig(policyName: PolicyName = "default"): PolicyConfig {
+function makeDefaultConfig(policyName: PolicyName = 'default'): PolicyConfig {
   return {
     policyName,
     entries: FULL_ENTRIES,
@@ -55,23 +70,23 @@ function makeDefaultConfig(policyName: PolicyName = "default"): PolicyConfig {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("policy registry", () => {
+describe('policy registry', () => {
   // ─── Test 10: All named policies resolve to callable functions ─────────────
-  it("resolves each of the 5 named policies to a callable function", () => {
+  it('resolves each of the 5 named policies to a callable function', () => {
     for (const name of POLICY_NAMES) {
       const policy = createPolicy(makeDefaultConfig(name));
-      expect(typeof policy).toBe("function");
+      expect(typeof policy).toBe('function');
     }
   });
 
   // ─── Test 11: createPolicy('default') matches createDefaultPolicy directly ─
   it("createPolicy with 'default' matches createDefaultPolicy invoked directly", () => {
-    const config = makeDefaultConfig("default");
+    const config = makeDefaultConfig('default');
     const policyViaRegistry = createPolicy(config);
     const policyDirect = createDefaultPolicy(config);
 
-    const speaker = makeAgent("W1-Bi");
-    const hearer = makeAgent("W1-Bi");
+    const speaker = makeAgent('W1-Bi');
+    const hearer = makeAgent('W1-Bi');
 
     // Call each policy 100 times against freshly seeded RNGs to confirm
     // the registry's 'default' dispatch does not drop any config bindings.
@@ -87,35 +102,39 @@ describe("policy registry", () => {
   });
 
   // ─── Test 12: Unknown policy name throws a clear error ─────────────────────
-  it("throws a self-diagnosing error for an unknown policy name", () => {
+  it('throws a self-diagnosing error for an unknown policy name', () => {
     const badConfig = {
       ...makeDefaultConfig(),
-      policyName: "not-a-real-policy" as PolicyName,
+      policyName: 'not-a-real-policy' as PolicyName,
     };
     expect(() => createPolicy(badConfig)).toThrow();
 
-    let message = "";
+    let message = '';
     try {
       createPolicy(badConfig);
     } catch (e) {
       message = (e as Error).message;
     }
-    expect(message).toContain("not-a-real-policy");
-    expect(message).toContain("default"); // known-names list included
+    expect(message).toContain('not-a-real-policy');
+    expect(message).toContain('default'); // known-names list included
   });
 
   // ─── Test 13: listPolicies() returns exactly the five names ────────────────
-  it("listPolicies returns exactly the five canonical policy names", () => {
+  it('listPolicies returns exactly the five canonical policy names', () => {
     const names = listPolicies();
-    expect([...names].sort()).toEqual(
-      ["always-l1", "always-l2", "default", "mirror-hearer", "random"],
-    );
+    expect([...names].sort()).toEqual([
+      'always-l1',
+      'always-l2',
+      'default',
+      'mirror-hearer',
+      'random',
+    ]);
     expect(names.length).toBe(5);
   });
 
   // ─── Test 14: alwaysL1 returns L1 for every class pair ────────────────────
-  it("alwaysL1 returns L1 for all 16 (speakerClass × hearerClass) combinations", () => {
-    const classes: AgentClass[] = ["W1-Mono", "W1-Bi", "W2-Native", "W2-Immigrant"];
+  it('alwaysL1 returns L1 for all 16 (speakerClass × hearerClass) combinations', () => {
+    const classes: AgentClass[] = ['W1-Mono', 'W1-Bi', 'W2-Native', 'W2-Immigrant'];
     const rng = createRNG(0);
     for (const sc of classes) {
       for (const hc of classes) {
@@ -130,8 +149,8 @@ describe("policy registry", () => {
   });
 
   // ─── Test 15: alwaysL2 returns L2 for every class pair ────────────────────
-  it("alwaysL2 returns L2 for all 16 (speakerClass × hearerClass) combinations", () => {
-    const classes: AgentClass[] = ["W1-Mono", "W1-Bi", "W2-Native", "W2-Immigrant"];
+  it('alwaysL2 returns L2 for all 16 (speakerClass × hearerClass) combinations', () => {
+    const classes: AgentClass[] = ['W1-Mono', 'W1-Bi', 'W2-Native', 'W2-Immigrant'];
     const rng = createRNG(0);
     for (const sc of classes) {
       for (const hc of classes) {
@@ -146,9 +165,9 @@ describe("policy registry", () => {
   });
 
   // ─── Test 16: random is a ~50/50 coin ─────────────────────────────────────
-  it("random yields L1 in ~50% of 10,000 trials", () => {
-    const speaker = makeAgent("W1-Bi");
-    const hearer = makeAgent("W1-Bi");
+  it('random yields L1 in ~50% of 10,000 trials', () => {
+    const speaker = makeAgent('W1-Bi');
+    const hearer = makeAgent('W1-Bi');
     const rng = createRNG(123);
 
     let l1Count = 0;
@@ -166,20 +185,20 @@ describe("policy registry", () => {
 
   // ─── Test 17: mirrorHearer returns hearer's dominant language ──────────────
   it("mirrorHearer returns the language with higher total weight in hearer's inventory", () => {
-    const ref = "yellow-like" as Referent;
-    const lex = "yellow" as TokenLexeme;
+    const ref = 'yellow-like' as Referent;
+    const lex = 'yellow' as TokenLexeme;
 
     // Hearer whose L1 weight dominates
     const l1HeavyInventory = inventorySet(
       inventorySet(emptyInventory(), L1, ref, lex, 3.0 as Weight),
       L2,
       ref,
-      "jaune" as TokenLexeme,
+      'jaune' as TokenLexeme,
       1.0 as Weight,
     );
     const l1HeavyHearer: AgentState = {
-      id: makeAgentId("hearer-l1-heavy"),
-      class: "W1-Bi",
+      id: makeAgentId('hearer-l1-heavy'),
+      class: 'W1-Bi',
       position: 0,
       inventory: l1HeavyInventory,
       interactionMemory: [],
@@ -190,12 +209,12 @@ describe("policy registry", () => {
       inventorySet(emptyInventory(), L1, ref, lex, 1.0 as Weight),
       L2,
       ref,
-      "jaune" as TokenLexeme,
+      'jaune' as TokenLexeme,
       4.0 as Weight,
     );
     const l2HeavyHearer: AgentState = {
-      id: makeAgentId("hearer-l2-heavy"),
-      class: "W2-Immigrant",
+      id: makeAgentId('hearer-l2-heavy'),
+      class: 'W2-Immigrant',
       position: 0,
       inventory: l2HeavyInventory,
       interactionMemory: [],
@@ -206,18 +225,18 @@ describe("policy registry", () => {
       inventorySet(emptyInventory(), L1, ref, lex, 2.0 as Weight),
       L2,
       ref,
-      "jaune" as TokenLexeme,
+      'jaune' as TokenLexeme,
       2.0 as Weight,
     );
     const equalHearer: AgentState = {
-      id: makeAgentId("hearer-equal"),
-      class: "W1-Bi",
+      id: makeAgentId('hearer-equal'),
+      class: 'W1-Bi',
       position: 0,
       inventory: equalInventory,
       interactionMemory: [],
     };
 
-    const speaker = makeAgent("W1-Bi");
+    const speaker = makeAgent('W1-Bi');
     const rng = createRNG(0);
 
     expect(mirrorHearer({ speaker, hearer: l1HeavyHearer, rng })).toBe(L1);
@@ -227,11 +246,11 @@ describe("policy registry", () => {
 
   // ─── Smoke: createPolicy('always-l1') via registry behaves like alwaysL1 ───
   it("createPolicy('always-l1') returns a policy that always yields L1", () => {
-    const policy = createPolicy(makeDefaultConfig("always-l1"));
+    const policy = createPolicy(makeDefaultConfig('always-l1'));
     const rng = createRNG(0);
     const result = policy({
-      speaker: makeAgent("W2-Native"),
-      hearer: makeAgent("W2-Native"),
+      speaker: makeAgent('W2-Native'),
+      hearer: makeAgent('W2-Native'),
       rng,
     });
     expect(result).toBe(L1);
@@ -239,26 +258,20 @@ describe("policy registry", () => {
 
   // ─── Smoke: createPolicy('mirror-hearer') via registry ─────────────────────
   it("createPolicy('mirror-hearer') returns a policy consistent with mirrorHearer", () => {
-    const policy = createPolicy(makeDefaultConfig("mirror-hearer"));
+    const policy = createPolicy(makeDefaultConfig('mirror-hearer'));
 
-    const ref = "yellow-like" as Referent;
-    const lex = "jaune" as TokenLexeme;
-    const l2HeavyInventory = inventorySet(
-      emptyInventory(),
-      L2,
-      ref,
-      lex,
-      5.0 as Weight,
-    );
+    const ref = 'yellow-like' as Referent;
+    const lex = 'jaune' as TokenLexeme;
+    const l2HeavyInventory = inventorySet(emptyInventory(), L2, ref, lex, 5.0 as Weight);
     const hearer: AgentState = {
-      id: makeAgentId("hearer-l2"),
-      class: "W2-Native",
+      id: makeAgentId('hearer-l2'),
+      class: 'W2-Native',
       position: 0,
       inventory: l2HeavyInventory,
       interactionMemory: [],
     };
 
     const rng = createRNG(0);
-    expect(policy({ speaker: makeAgent("W1-Bi"), hearer, rng })).toBe(L2);
+    expect(policy({ speaker: makeAgent('W1-Bi'), hearer, rng })).toBe(L2);
   });
 });

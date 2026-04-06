@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/mike/Development/msksim && npx eslint --fix . 2>/dev/null; npx prettier --write . 2>/dev/null",
+            "timeout": 120,
+            "statusMessage": "Linting and formatting..."
+          }
+        ]
+      }
+    ]
+  }
+}

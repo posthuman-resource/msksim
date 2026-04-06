@@ -138,16 +138,22 @@ describe('changePassword', () => {
 describe('removeUser cascade', () => {
   it('deletes associated sessions when a user is removed (FK cascade)', async () => {
     await addUser('alice', 'pass', db);
-    const userRows = db.select({ id: users.id }).from(users).where(eq(users.username, 'alice')).all();
+    const userRows = db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, 'alice'))
+      .all();
     const userId = userRows[0].id;
 
     // Insert a session row directly
     const fakeToken = 't'.repeat(64);
-    db.insert(sessions).values({
-      id: fakeToken,
-      userId,
-      expiresAt: new Date(Date.now() + 86400_000),
-    }).run();
+    db.insert(sessions)
+      .values({
+        id: fakeToken,
+        userId,
+        expiresAt: new Date(Date.now() + 86400_000),
+      })
+      .run();
 
     const sessionsBefore = db.select().from(sessions).where(eq(sessions.userId, userId)).all();
     expect(sessionsBefore).toHaveLength(1);

@@ -28,7 +28,7 @@ export const tickMetrics = sqliteTable(
     index('tick_metrics_run_metric_idx').on(table.runId, table.metricName),
     // Serves "all metrics of one tick for one run" — the live dashboard replay shape.
     index('tick_metrics_run_tick_idx').on(table.runId, table.tick),
-  ]
+  ],
 );
 
 export type TickMetric = typeof tickMetrics.$inferSelect;

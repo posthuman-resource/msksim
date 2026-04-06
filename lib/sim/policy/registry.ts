@@ -6,9 +6,9 @@
 // and for persistence in the drizzle configs table (step 08).
 // See CLAUDE.md "Known gotchas" for the structuredClone/DataCloneError risk.
 
-import { createDefaultPolicy } from "./default";
-import { alwaysL1, alwaysL2, random, mirrorHearer } from "./alternatives";
-import type { LanguagePolicy, PolicyConfig, PolicyName } from "../policy";
+import { createDefaultPolicy } from './default';
+import { alwaysL1, alwaysL2, random, mirrorHearer } from './alternatives';
+import type { LanguagePolicy, PolicyConfig, PolicyName } from '../policy';
 
 // ─── Policy name registry ─────────────────────────────────────────────────────
 
@@ -19,22 +19,20 @@ import type { LanguagePolicy, PolicyConfig, PolicyName } from "../policy";
  * constant rather than duplicating the strings.
  */
 export const POLICY_NAMES = [
-  "default",
-  "always-l1",
-  "always-l2",
-  "random",
-  "mirror-hearer",
+  'default',
+  'always-l1',
+  'always-l2',
+  'random',
+  'mirror-hearer',
 ] as const satisfies readonly PolicyName[];
 
 // Map from non-default policy names to their zero-config implementations.
-const ALTERNATIVE_MAP = new Map<Exclude<PolicyName, "default">, LanguagePolicy>(
-  [
-    ["always-l1", alwaysL1],
-    ["always-l2", alwaysL2],
-    ["random", random],
-    ["mirror-hearer", mirrorHearer],
-  ],
-);
+const ALTERNATIVE_MAP = new Map<Exclude<PolicyName, 'default'>, LanguagePolicy>([
+  ['always-l1', alwaysL1],
+  ['always-l2', alwaysL2],
+  ['random', random],
+  ['mirror-hearer', mirrorHearer],
+]);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -50,14 +48,14 @@ const ALTERNATIVE_MAP = new Map<Exclude<PolicyName, "default">, LanguagePolicy>(
  * a config typo is immediately identifiable.
  */
 export function createPolicy(config: PolicyConfig): LanguagePolicy {
-  if (config.policyName === "default") {
+  if (config.policyName === 'default') {
     return createDefaultPolicy(config);
   }
 
   const policy = ALTERNATIVE_MAP.get(config.policyName);
   if (policy === undefined) {
     throw new Error(
-      `Unknown policy name: "${config.policyName}". Known policies: ${POLICY_NAMES.join(", ")}`,
+      `Unknown policy name: "${config.policyName}". Known policies: ${POLICY_NAMES.join(', ')}`,
     );
   }
   return policy;

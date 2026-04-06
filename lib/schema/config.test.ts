@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { z } from "zod";
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import {
   ExperimentConfig,
   TopologyConfig,
@@ -16,10 +16,10 @@ import {
   DEFAULT_L1_RED,
   DEFAULT_L2_YELLOW,
   DEFAULT_L2_RED,
-} from "./config.js";
+} from './config.js';
 
-describe("ExperimentConfig", () => {
-  it("parse({}) returns a valid config with all fields populated", () => {
+describe('ExperimentConfig', () => {
+  it('parse({}) returns a valid config with all fields populated', () => {
     const result = ExperimentConfig.safeParse({});
     expect(result.success).toBe(true);
     if (!result.success) return;
@@ -40,7 +40,7 @@ describe("ExperimentConfig", () => {
     expect(config.sampleInterval).toBeDefined();
   });
 
-  it("default config matches the PDF canonical setup", () => {
+  it('default config matches the PDF canonical setup', () => {
     const config = ExperimentConfig.parse({});
 
     // per docs/spec.md §3.4 — 3:2 ratio
@@ -60,60 +60,60 @@ describe("ExperimentConfig", () => {
     // indexed by plain string literals at the TypeScript type level, only at runtime.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const seed = config.world1.vocabularySeed as any;
-    expect(seed["W1-Mono"]["L1"]["yellow-like"][0].lexeme).toBe(DEFAULT_L1_YELLOW);
-    expect(seed["W1-Mono"]["L1"]["yellow-like"][0].initialWeight).toBe(1.0);
-    expect(seed["W1-Mono"]["L1"]["red-like"][0].lexeme).toBe(DEFAULT_L1_RED);
-    expect(seed["W1-Mono"]["L1"]["red-like"][0].initialWeight).toBe(1.0);
+    expect(seed['W1-Mono']['L1']['yellow-like'][0].lexeme).toBe(DEFAULT_L1_YELLOW);
+    expect(seed['W1-Mono']['L1']['yellow-like'][0].initialWeight).toBe(1.0);
+    expect(seed['W1-Mono']['L1']['red-like'][0].lexeme).toBe(DEFAULT_L1_RED);
+    expect(seed['W1-Mono']['L1']['red-like'][0].initialWeight).toBe(1.0);
 
     // W1-Bi should have L2 terms as well
-    expect(seed["W1-Bi"]["L2"]["yellow-like"][0].lexeme).toBe(DEFAULT_L2_YELLOW);
-    expect(seed["W1-Bi"]["L2"]["red-like"][0].lexeme).toBe(DEFAULT_L2_RED);
+    expect(seed['W1-Bi']['L2']['yellow-like'][0].lexeme).toBe(DEFAULT_L2_YELLOW);
+    expect(seed['W1-Bi']['L2']['red-like'][0].lexeme).toBe(DEFAULT_L2_RED);
   });
 
-  it("tickCount: 0 fails validation with error path [tickCount]", () => {
+  it('tickCount: 0 fails validation with error path [tickCount]', () => {
     const result = ExperimentConfig.safeParse({ tickCount: 0 });
     expect(result.success).toBe(false);
     if (result.success) return;
     const paths = result.error.issues.map((i) => i.path);
-    expect(paths.some((p) => p.includes("tickCount"))).toBe(true);
+    expect(paths.some((p) => p.includes('tickCount'))).toBe(true);
   });
 
-  it("deltaPositive: -1 fails validation", () => {
+  it('deltaPositive: -1 fails validation', () => {
     const result = ExperimentConfig.safeParse({ deltaPositive: -1 });
     expect(result.success).toBe(false);
     if (result.success) return;
     const paths = result.error.issues.map((i) => i.path);
-    expect(paths.some((p) => p.includes("deltaPositive"))).toBe(true);
+    expect(paths.some((p) => p.includes('deltaPositive'))).toBe(true);
   });
 
-  it("agentCount: 0 in world1 fails validation", () => {
+  it('agentCount: 0 in world1 fails validation', () => {
     const result = ExperimentConfig.safeParse({ world1: { agentCount: 0 } });
     expect(result.success).toBe(false);
     if (result.success) return;
     const paths = result.error.issues.map((i) => i.path);
-    expect(paths.some((p) => p.includes("agentCount"))).toBe(true);
+    expect(paths.some((p) => p.includes('agentCount'))).toBe(true);
   });
 
-  it("agentCount: 0 in world2 fails validation", () => {
+  it('agentCount: 0 in world2 fails validation', () => {
     const result = ExperimentConfig.safeParse({ world2: { agentCount: 0 } });
     expect(result.success).toBe(false);
   });
 
-  it("monolingualBilingualRatio: 0 fails validation", () => {
+  it('monolingualBilingualRatio: 0 fails validation', () => {
     const result = ExperimentConfig.safeParse({
       world1: { monolingualBilingualRatio: 0 },
     });
     expect(result.success).toBe(false);
     if (result.success) return;
     const paths = result.error.issues.map((i) => i.path);
-    expect(paths.some((p) => p.includes("monolingualBilingualRatio"))).toBe(true);
+    expect(paths.some((p) => p.includes('monolingualBilingualRatio'))).toBe(true);
   });
 });
 
-describe("TopologyConfig discriminated union", () => {
-  it("lattice variant parses and narrows correctly", () => {
+describe('TopologyConfig discriminated union', () => {
+  it('lattice variant parses and narrows correctly', () => {
     const result = TopologyConfig.safeParse({
-      type: "lattice",
+      type: 'lattice',
       width: 30,
       height: 30,
     });
@@ -121,60 +121,60 @@ describe("TopologyConfig discriminated union", () => {
     if (!result.success) return;
     // TypeScript narrowing check
     const parsed = result.data;
-    if (parsed.type === "lattice") {
+    if (parsed.type === 'lattice') {
       // width is accessible on the narrowed type
       expect(parsed.width).toBe(30);
       expect(parsed.height).toBe(30);
-      expect(parsed.neighborhood).toBe("moore"); // default applied
+      expect(parsed.neighborhood).toBe('moore'); // default applied
     } else {
-      throw new Error("Expected lattice variant");
+      throw new Error('Expected lattice variant');
     }
   });
 
-  it("well-mixed variant parses and has no width field", () => {
-    const result = TopologyConfig.safeParse({ type: "well-mixed" });
+  it('well-mixed variant parses and has no width field', () => {
+    const result = TopologyConfig.safeParse({ type: 'well-mixed' });
     expect(result.success).toBe(true);
     if (!result.success) return;
     const parsed = result.data;
-    expect(parsed.type).toBe("well-mixed");
+    expect(parsed.type).toBe('well-mixed');
     // 'width' should not exist on well-mixed
-    expect("width" in parsed).toBe(false);
+    expect('width' in parsed).toBe(false);
   });
 
-  it("lattice with negative width fails", () => {
+  it('lattice with negative width fails', () => {
     const result = TopologyConfig.safeParse({
-      type: "lattice",
+      type: 'lattice',
       width: -1,
       height: 10,
     });
     expect(result.success).toBe(false);
   });
 
-  it("network topology placeholder shape parses", () => {
+  it('network topology placeholder shape parses', () => {
     const result = TopologyConfig.safeParse({
-      type: "network",
-      kind: "small-world",
+      type: 'network',
+      kind: 'small-world',
       parameters: { k: 4 },
     });
     expect(result.success).toBe(true);
   });
 
-  it("network topology with invalid kind fails", () => {
+  it('network topology with invalid kind fails', () => {
     const result = TopologyConfig.safeParse({
-      type: "network",
-      kind: "not-a-kind",
+      type: 'network',
+      kind: 'not-a-kind',
     });
     expect(result.success).toBe(false);
   });
 });
 
-describe("JSON roundtrip", () => {
-  it("serialize → deserialize → parse is identity", () => {
+describe('JSON roundtrip', () => {
+  it('serialize → deserialize → parse is identity', () => {
     const original = ExperimentConfig.parse({
       seed: 42,
       tickCount: 1000,
-      world1: { topology: { type: "well-mixed" } },
-      world2: { topology: { type: "well-mixed" } },
+      world1: { topology: { type: 'well-mixed' } },
+      world2: { topology: { type: 'well-mixed' } },
     });
     const json = JSON.stringify(original);
     const reparsed = ExperimentConfig.parse(JSON.parse(json));
@@ -183,28 +183,28 @@ describe("JSON roundtrip", () => {
   });
 });
 
-describe("Language policy matrix", () => {
-  it("defaultLanguagePolicies covers all 4×4 (speakerClass, hearerClass) pairs", () => {
+describe('Language policy matrix', () => {
+  it('defaultLanguagePolicies covers all 4×4 (speakerClass, hearerClass) pairs', () => {
     const classes = AgentClass.options;
     const ruleIds = new Set(LanguagePolicyRuleId.options);
 
     for (const speaker of classes) {
       for (const hearer of classes) {
         const entry = defaultLanguagePolicies.find(
-          (e) => e.speakerClass === speaker && e.hearerClass === hearer
+          (e) => e.speakerClass === speaker && e.hearerClass === hearer,
         );
         expect(entry, `Missing policy for ${speaker} → ${hearer}`).toBeDefined();
         expect(
           ruleIds.has(entry!.ruleId as z.infer<typeof LanguagePolicyRuleId>),
-          `Invalid ruleId ${entry?.ruleId} for ${speaker} → ${hearer}`
+          `Invalid ruleId ${entry?.ruleId} for ${speaker} → ${hearer}`,
         ).toBe(true);
       }
     }
   });
 });
 
-describe("BatchConfig", () => {
-  it("BatchConfig.parse({ experiment: {} }) produces a runnable batch", () => {
+describe('BatchConfig', () => {
+  it('BatchConfig.parse({ experiment: {} }) produces a runnable batch', () => {
     const result = BatchConfig.safeParse({ experiment: {} });
     expect(result.success).toBe(true);
     if (!result.success) return;
@@ -215,14 +215,14 @@ describe("BatchConfig", () => {
   });
 });
 
-describe("SweepConfig", () => {
-  it("SweepConfig with baseExperiment:{} and axes succeeds and preserves values order", () => {
+describe('SweepConfig', () => {
+  it('SweepConfig with baseExperiment:{} and axes succeeds and preserves values order', () => {
     const values = [0.5, 1.0, 1.5, 2.0];
     const result = SweepConfig.safeParse({
       baseExperiment: {},
       axes: [
         {
-          paramPath: "world1.monolingualBilingualRatio",
+          paramPath: 'world1.monolingualBilingualRatio',
           values,
         },
       ],
@@ -233,8 +233,8 @@ describe("SweepConfig", () => {
   });
 });
 
-describe("TypeScript inferred type compatibility", () => {
-  it("ExperimentConfig output is assignable to ExperimentConfig type", () => {
+describe('TypeScript inferred type compatibility', () => {
+  it('ExperimentConfig output is assignable to ExperimentConfig type', () => {
     const config = ExperimentConfig.parse({});
     // This is both a compile-time and runtime check
     const _: z.infer<typeof ExperimentConfig> = config;

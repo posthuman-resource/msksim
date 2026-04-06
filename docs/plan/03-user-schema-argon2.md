@@ -1,11 +1,11 @@
 ---
-step: "03"
-title: "user schema and argon2 hashing"
+step: '03'
+title: 'user schema and argon2 hashing'
 kind: foundation
 ui: false
 timeout_minutes: 20
 prerequisites:
-  - "step 02: drizzle sqlite scaffolding"
+  - 'step 02: drizzle sqlite scaffolding'
 ---
 
 ## 1. Goal
@@ -21,8 +21,8 @@ Introduce the first drizzle entity — the `users` table — and implement a min
 
 ## 3. Spec references
 
-- **`docs/spec.md` §10 "Out of Scope"** explicitly lists *"Multi-user / server-side orchestration. The app runs entirely in the researcher's browser. There is no shared backend, no user accounts, no collaboration over the network."* Authentication is **not in spec scope**. It is a deliberate **user override** recorded in `CLAUDE.md` "Stack and versions", which pins the v1 storage and auth posture: Drizzle + `better-sqlite3` server-side, all routes gated, `@node-rs/argon2` for password hashing, table-backed sessions with HttpOnly cookies. Step 03 implements the first half of that override (passwords and the users row); step 04 implements sessions.
-- **`CLAUDE.md` "Stack and versions"** — the authoritative override entry: *"`@node-rs/argon2` for password hashing, server-side table-backed sessions with HttpOnly cookies. All routes are gated for v1."* Cite this section verbatim in the commit body if asked to justify why a spec-out-of-scope feature is being built.
+- **`docs/spec.md` §10 "Out of Scope"** explicitly lists _"Multi-user / server-side orchestration. The app runs entirely in the researcher's browser. There is no shared backend, no user accounts, no collaboration over the network."_ Authentication is **not in spec scope**. It is a deliberate **user override** recorded in `CLAUDE.md` "Stack and versions", which pins the v1 storage and auth posture: Drizzle + `better-sqlite3` server-side, all routes gated, `@node-rs/argon2` for password hashing, table-backed sessions with HttpOnly cookies. Step 03 implements the first half of that override (passwords and the users row); step 04 implements sessions.
+- **`CLAUDE.md` "Stack and versions"** — the authoritative override entry: _"`@node-rs/argon2` for password hashing, server-side table-backed sessions with HttpOnly cookies. All routes are gated for v1."_ Cite this section verbatim in the commit body if asked to justify why a spec-out-of-scope feature is being built.
 - **`CLAUDE.md` "Authentication patterns"** — step 03 is its first population event. Implementing claude MUST append to this section per section 11 below, not rewrite it.
 
 ## 4. Research notes
@@ -30,7 +30,7 @@ Introduce the first drizzle entity — the `users` table — and implement a min
 ### Local Next.js 16 documentation (shipped in `node_modules/next/dist/docs/`)
 
 1. **`01-app/02-guides/authentication.md` — §"Sign-up and login functionality → Create a user or check user credentials"** (lines ~301-360 of the shipped file). Next's example is structurally exactly what we need: Server Action, Zod validation, then `const hashedPassword = await bcrypt.hash(password, 10)` followed by `db.insert(users).values({ ..., password: hashedPassword })`. We replace `bcrypt` with `@node-rs/argon2` (justified in section 8 and confirmed by OWASP in §4-external below) and otherwise follow the same three-step shape — step 03 provides the hashing primitive that step 07 will call in exactly this idiom.
-2. **`01-app/02-guides/data-security.md` — §"Preventing client-side execution of server-only code"** (lines ~238-264). States: *"To prevent server-only code from being executed on the client, you can mark a module with the `server-only` package... This ensures that proprietary code or internal business logic stays on the server by causing a build error if the module is imported in the client environment."* `lib/auth/password.ts` MUST begin with `import 'server-only'` for two reasons: (a) Next 16 + Turbopack would otherwise silently attempt to resolve `@node-rs/argon2`'s native `.node` binding in a client bundle and emit the opaque binding-failure error that CLAUDE.md "Known gotchas" explicitly warns about, and (b) the Next docs call this pattern out by name in the authentication-adjacent data-security guide.
+2. **`01-app/02-guides/data-security.md` — §"Preventing client-side execution of server-only code"** (lines ~238-264). States: _"To prevent server-only code from being executed on the client, you can mark a module with the `server-only` package... This ensures that proprietary code or internal business logic stays on the server by causing a build error if the module is imported in the client environment."_ `lib/auth/password.ts` MUST begin with `import 'server-only'` for two reasons: (a) Next 16 + Turbopack would otherwise silently attempt to resolve `@node-rs/argon2`'s native `.node` binding in a client bundle and emit the opaque binding-failure error that CLAUDE.md "Known gotchas" explicitly warns about, and (b) the Next docs call this pattern out by name in the authentication-adjacent data-security guide.
 3. **`01-app/02-guides/upgrading/version-16.md` — §"Node.js runtime and browser support"** (lines ~106-113). Pins Node ≥ 20.9 as the framework floor. `@node-rs/argon2` 2.0.2's prebuilt binaries target modern NAPI versions shipped with Node 20+; the combination is coherent. The same file's §"Turbopack by default" (lines ~114-166) is why we cannot rely on any `webpack.resolve.fallback` trick to keep native modules out of client bundles — Turbopack enforces the separation structurally, so `import 'server-only'` is the only correct guard.
 
 ### External sources (WebFetched)
@@ -41,14 +41,14 @@ Introduce the first drizzle entity — the `users` table — and implement a min
    - Cross-platform with prebuilt binaries and **no `node-gyp` or postinstall step**. The npm registry record for `2.0.2` lists optional dependencies for darwin-x64, darwin-arm64, linux-x64-gnu, linux-x64-musl, linux-arm64-gnu, linux-arm64-musl, win32-x64-msvc, win32-arm64-msvc, wasm32-wasi, and several others — meaning the common dev and CI environments this repo will run in are prebuilt.
    - Fallback if the prebuilt binary does not resolve on a given machine: `npm rebuild @node-rs/argon2` (documented in CLAUDE.md "Stack and versions" and the existing step 00 pre-flight).
 
-5. **OWASP Password Storage Cheat Sheet — https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html**. Recommends: *"Use Argon2id with a minimum configuration of 19 MiB of memory, an iteration count of 2, and 1 degree of parallelism"* (i.e., m=19456, t=2, p=1). These are *exactly* the `@node-rs/argon2` defaults, which is why this plan forbids passing a custom `options` argument — doing so would be a hand-tune with no justification. OWASP additionally positions bcrypt as a legacy-only choice: *"The bcrypt password hashing function should only be used for password storage in legacy systems where Argon2 and scrypt are not available."* This is the primary external justification for the "path not taken" in section 8.
+5. **OWASP Password Storage Cheat Sheet — https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html**. Recommends: _"Use Argon2id with a minimum configuration of 19 MiB of memory, an iteration count of 2, and 1 degree of parallelism"_ (i.e., m=19456, t=2, p=1). These are _exactly_ the `@node-rs/argon2` defaults, which is why this plan forbids passing a custom `options` argument — doing so would be a hand-tune with no justification. OWASP additionally positions bcrypt as a legacy-only choice: _"The bcrypt password hashing function should only be used for password storage in legacy systems where Argon2 and scrypt are not available."_ This is the primary external justification for the "path not taken" in section 8.
 
-6. **Drizzle ORM SQLite column types — https://orm.drizzle.team/docs/column-types/sqlite**. Confirms the idioms used in section 5: `text().primaryKey()`, `text().notNull().unique()`, and the two alternatives for timestamps — SQL-side `integer({ mode: 'timestamp' }).default(sql\`(CURRENT_TIMESTAMP)\`)` versus runtime `integer({ mode: 'timestamp' }).$defaultFn(() => new Date()).$onUpdateFn(() => new Date())`. This plan picks the runtime `$defaultFn` / `$onUpdateFn` pair for `updated_at` because SQLite has no native `ON UPDATE CURRENT_TIMESTAMP` trigger and drizzle's runtime hook is the idiomatic, portable answer.
+6. **Drizzle ORM SQLite column types — https://orm.drizzle.team/docs/column-types/sqlite**. Confirms the idioms used in section 5: `text().primaryKey()`, `text().notNull().unique()`, and the two alternatives for timestamps — SQL-side `integer({ mode: 'timestamp' }).default(sql\`(CURRENT_TIMESTAMP)\`)`versus runtime`integer({ mode: 'timestamp' }).$defaultFn(() => new Date()).$onUpdateFn(() => new Date())`. This plan picks the runtime `$defaultFn` / `$onUpdateFn`pair for`updated_at`because SQLite has no native`ON UPDATE CURRENT_TIMESTAMP` trigger and drizzle's runtime hook is the idiomatic, portable answer.
 
 ### Path not taken
 
 7. **Why not `bcrypt` (or `@node-rs/bcrypt`, or the pure-JS `argon2` package)?**
-   - **`bcrypt` (kelektiv/node.bcrypt.js)**: OWASP (source 5) now classifies bcrypt as a legacy algorithm, acceptable only where Argon2 is unavailable. Argon2id is available via `@node-rs/argon2`, so there is no reason to adopt bcrypt. The Next 16 auth example still shows `bcrypt.hash(password, 10)` as a placeholder, but that is an illustration of *where* to hash, not a prescription of *which* algorithm.
+   - **`bcrypt` (kelektiv/node.bcrypt.js)**: OWASP (source 5) now classifies bcrypt as a legacy algorithm, acceptable only where Argon2 is unavailable. Argon2id is available via `@node-rs/argon2`, so there is no reason to adopt bcrypt. The Next 16 auth example still shows `bcrypt.hash(password, 10)` as a placeholder, but that is an illustration of _where_ to hash, not a prescription of _which_ algorithm.
    - **`@node-rs/bcrypt`**: same algorithm caveat as above, same native-binding posture as `@node-rs/argon2` (prebuilt via NAPI), no upside.
    - **Pure-JS `argon2` (node-argon2 wrapped around WASM, or the `argon2-browser` family)**: pure-JS / WASM Argon2 is roughly one order of magnitude slower than the Rust binding at equivalent parameters. Login time is already user-visible at ~100 ms with the native binding (CLAUDE.md "Known gotchas"); a 10× slowdown would push it past the perceptual budget. Additionally, `@node-rs/argon2` ships a `browser.js` wasm fallback automatically, so the pure-JS alternative offers nothing we would not already have in degraded environments.
    - **`Bun.password` / `crypto.hash` style built-ins**: not available in the Node 20.9 runtime Next 16 requires, so out of scope.
@@ -144,9 +144,9 @@ Two sections receive appends; both stay within their hard caps per CLAUDE.md "Li
   - The `import 'server-only'` requirement for `lib/auth/password.ts`.
 
 - **"Known gotchas"** (hard cap 20 items) — append ≤ 3 items:
-  - *"Argon2 hashing is slow by design (~100 ms per call with library defaults). Only hash at login and at user creation; never in a loop, a request-fanout, or a Server Component render path. Rationale: the memory-hardness that makes it attack-resistant is the same cost on the defender."* (Note: CLAUDE.md "Known gotchas" already contains a short version of this caveat; if it is already present, the implementing claude should **not** duplicate it — verify before appending.)
-  - *"`@node-rs/argon2` ships prebuilt NAPI binaries for all common platforms. If `require('@node-rs/argon2')` throws on a new dev machine, the fix is `npm rebuild @node-rs/argon2`, not switching libraries."*
-  - *"The Argon2 hash string is self-describing (variant, params, salt, hash all embedded). Do not add a separate `salt` column to `users`; the hash string is the whole record."*
+  - _"Argon2 hashing is slow by design (~100 ms per call with library defaults). Only hash at login and at user creation; never in a loop, a request-fanout, or a Server Component render path. Rationale: the memory-hardness that makes it attack-resistant is the same cost on the defender."_ (Note: CLAUDE.md "Known gotchas" already contains a short version of this caveat; if it is already present, the implementing claude should **not** duplicate it — verify before appending.)
+  - _"`@node-rs/argon2` ships prebuilt NAPI binaries for all common platforms. If `require('@node-rs/argon2')` throws on a new dev machine, the fix is `npm rebuild @node-rs/argon2`, not switching libraries."_
+  - _"The Argon2 hash string is self-describing (variant, params, salt, hash all embedded). Do not add a separate `salt` column to `users`; the hash string is the whole record."_
 
 The implementing claude must verify both sections' line counts after the append and abort if either overflows its cap; promote overflow content into a new dedicated section per CLAUDE.md "Living-document rules" rather than truncating.
 

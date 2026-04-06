@@ -4,13 +4,13 @@
 // doing so silently breaks the deterministic draw sequence that makes replay
 // and snapshot diffing possible.
 
-import type { ExperimentConfig } from "@/lib/schema/experiment";
-import type { WorldConfig, VocabularySeed } from "@/lib/schema/world";
-import type { AgentClass, Language, Referent, TokenLexeme, Weight } from "@/lib/schema/primitives";
-import { createRNG, type RNG } from "./rng";
-import { makeAgentId, type AgentId, type AgentState, type Inventory } from "./types";
-import { createTopology } from "./topology/factory";
-import type { World, WorldId } from "./world";
+import type { ExperimentConfig } from '@/lib/schema/experiment';
+import type { WorldConfig, VocabularySeed } from '@/lib/schema/world';
+import type { AgentClass, Language, Referent, TokenLexeme, Weight } from '@/lib/schema/primitives';
+import { createRNG, type RNG } from './rng';
+import { makeAgentId, type AgentId, type AgentState, type Inventory } from './types';
+import { createTopology } from './topology/factory';
+import type { World, WorldId } from './world';
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
@@ -85,10 +85,7 @@ function inventoryFromSeed(
  * Math.round ties break toward mono.
  * Edge cases: agentCount === 0 → {0, 0}; ratio === 0 → all bilingual.
  */
-function countMonoBi(
-  agentCount: number,
-  ratio: number,
-): { mono: number; bi: number } {
+function countMonoBi(agentCount: number, ratio: number): { mono: number; bi: number } {
   if (agentCount === 0) return { mono: 0, bi: 0 };
   if (ratio === 0) return { mono: 0, bi: agentCount };
   const mono = Math.round((agentCount * ratio) / (ratio + 1));
@@ -122,14 +119,11 @@ function buildWorld(worldId: WorldId, worldConfig: WorldConfig, rng: RNG): World
   const topology = createTopology(worldConfig.topology, rng, worldConfig.agentCount);
 
   // 2. Mono / bi split.
-  const { mono, bi } = countMonoBi(
-    worldConfig.agentCount,
-    worldConfig.monolingualBilingualRatio,
-  );
+  const { mono, bi } = countMonoBi(worldConfig.agentCount, worldConfig.monolingualBilingualRatio);
 
   // 3. Class assignment array (ordinal order, independent of position).
-  const monoClass: AgentClass = worldId === "world1" ? "W1-Mono" : "W2-Native";
-  const biClass: AgentClass = worldId === "world1" ? "W1-Bi" : "W2-Immigrant";
+  const monoClass: AgentClass = worldId === 'world1' ? 'W1-Mono' : 'W2-Native';
+  const biClass: AgentClass = worldId === 'world1' ? 'W1-Bi' : 'W2-Immigrant';
   const classes: AgentClass[] = [
     ...Array<AgentClass>(mono).fill(monoClass),
     ...Array<AgentClass>(bi).fill(biClass),
@@ -141,7 +135,7 @@ function buildWorld(worldId: WorldId, worldConfig: WorldConfig, rng: RNG): World
   //    Well-mixed / network: sequential indices (no spatial cells to permute;
   //      the topology is already fully connected, so order is irrelevant).
   let positions: number[];
-  if (topology.kind === "lattice") {
+  if (topology.kind === 'lattice') {
     const all = Array.from({ length: topology.size }, (_, i) => i);
     positions = rng.shuffle(all).slice(0, worldConfig.agentCount);
   } else {
@@ -152,11 +146,11 @@ function buildWorld(worldId: WorldId, worldConfig: WorldConfig, rng: RNG): World
   const languages = deriveLanguages(worldConfig.vocabularySeed);
 
   // 6. Build agents.
-  const prefix = worldId === "world1" ? "w1" : "w2";
+  const prefix = worldId === 'world1' ? 'w1' : 'w2';
   const agents: AgentState[] = [];
 
   for (let i = 0; i < worldConfig.agentCount; i++) {
-    const id = makeAgentId(`${prefix}-${String(i).padStart(3, "0")}`);
+    const id = makeAgentId(`${prefix}-${String(i).padStart(3, '0')}`);
     const agentClass = classes[i];
     const inventory = inventoryFromSeed(
       worldConfig.vocabularySeed,
@@ -190,7 +184,7 @@ export function bootstrapExperiment(
   seed: number,
 ): { world1: World; world2: World; rng: RNG } {
   const rng = createRNG(seed);
-  const world1 = buildWorld("world1", config.world1, rng);
-  const world2 = buildWorld("world2", config.world2, rng);
+  const world1 = buildWorld('world1', config.world1, rng);
+  const world2 = buildWorld('world2', config.world2, rng);
   return { world1, world2, rng };
 }

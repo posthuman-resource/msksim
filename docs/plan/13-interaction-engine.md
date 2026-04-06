@@ -1,14 +1,14 @@
 ---
-step: "13"
-title: "interaction engine"
+step: '13'
+title: 'interaction engine'
 kind: sim-core
 ui: false
 timeout_minutes: 20
 prerequisites:
-  - "step 09: seeded rng and core types"
-  - "step 10: topology implementations"
-  - "step 11: agent bootstrapping"
-  - "step 12: language selection policies"
+  - 'step 09: seeded rng and core types'
+  - 'step 10: topology implementations'
+  - 'step 11: agent bootstrapping'
+  - 'step 12: language selection policies'
 ---
 
 ## 1. Goal
@@ -94,7 +94,7 @@ First, **write `lib/sim/engine/weight-update.ts`**. The function signature is `u
 
 Second, **sketch the `SimulationState`, `InteractionEvent`, `TickResult`, `SchedulerMode`, and `PartnerStrategy` types** at the top of `lib/sim/engine.ts`. These are type declarations only, no runtime code, and they establish the public surface before the implementation body is written. The field order in `InteractionEvent` follows the step brief verbatim: `{ tick, worldId, speakerId, hearerId, language, referent, token, success }`. The `worldId` field is added beyond the step brief because metrics consumers (step 15-17) need to partition events by world, and deriving the world from an `AgentId` alone requires a lookup the metrics code shouldn't pay. `TickResult` carries `state` (the updated `SimulationState`), `interactions` (the per-tick `InteractionEvent[]`), and `tickNumber` (a convenience duplicate of `state.tickNumber` that avoids one level of indirection in test assertions). The `SimulationState` type explicitly duplicates `tickNumber` at the top level rather than storing it inside `config` or deriving it from `interactions.length`, because the tick counter is a mutable state variable and `config` is immutable.
 
-Third, **write `selectPartner`**. The function is `selectPartner(speaker: AgentState, world: World, rng: RNG, strategy: PartnerStrategy): AgentState | null`. The body is a `switch (strategy)` with a single `case 'uniform':` arm that calls `world.topology.pickNeighbor(speaker.position, rng)`, checks for `null` (isolated node) and returns `null` in that case, then resolves the non-null position index via `findAgentByPosition(world, positionIndex)`. If `findAgentByPosition` returns `undefined` (which should never happen given step 11's placement guarantees, but the types say it's possible), throw a descriptive error: `new Error(\`selectPartner: topology returned position ${positionIndex} but no agent lives there (speaker=${speaker.id})\`)` — this is defensive, and the test in section 9 does not exercise it, but the error message will immediately point a future debugger at the bootstrap / topology contract violation rather than at a generic `undefined is not an object`. After the switch, include an exhaustiveness check `const _exhaustive: never = strategy; throw new Error(\`Unknown strategy: ${_exhaustive}\`);` so that step 14's addition of `'preferential'` forces a compile error here until step 14 implements it. Add a comment at the switch: `// step 14 inserts 'preferential' here; see docs/plan/14-preferential-attachment.md for the biased strategy`.
+Third, **write `selectPartner`**. The function is `selectPartner(speaker: AgentState, world: World, rng: RNG, strategy: PartnerStrategy): AgentState | null`. The body is a `switch (strategy)` with a single `case 'uniform':` arm that calls `world.topology.pickNeighbor(speaker.position, rng)`, checks for `null` (isolated node) and returns `null` in that case, then resolves the non-null position index via `findAgentByPosition(world, positionIndex)`. If `findAgentByPosition` returns `undefined` (which should never happen given step 11's placement guarantees, but the types say it's possible), throw a descriptive error: `new Error(\`selectPartner: topology returned position ${positionIndex} but no agent lives there (speaker=${speaker.id})\`)`— this is defensive, and the test in section 9 does not exercise it, but the error message will immediately point a future debugger at the bootstrap / topology contract violation rather than at a generic`undefined is not an object`. After the switch, include an exhaustiveness check `const \_exhaustive: never = strategy; throw new Error(\`Unknown strategy: ${\_exhaustive}\`);`so that step 14's addition of`'preferential'`forces a compile error here until step 14 implements it. Add a comment at the switch:`// step 14 inserts 'preferential' here; see docs/plan/14-preferential-attachment.md for the biased strategy`.
 
 Fourth, **write the scheduler sub-helper**. The scheduler's job is: given a world, return the list of speaker agents for the current tick in the order they should be activated. Extract this into a private `getActivationOrder(world: World, rng: RNG, mode: SchedulerMode): AgentState[]` helper (inside `engine.ts`, not exported). The three branches: `'sequential'` returns `world.agents.slice()` (a shallow copy in agent-id order — step 11 guarantees ids sort lexicographically, and `world.agents` is already constructed in that order at bootstrap time); `'random'` returns `rng.shuffle(world.agents)` (shuffle returns a fresh array, does not mutate the input); `'priority'` returns `rng.shuffle(world.agents)` with a comment `// priority mode is a placeholder for future (e.g. activation-rate weighting); default to random for v1 per step brief`. The exhaustiveness check at the end guards against config drift if a fourth mode is added later. Note that the sequential branch's shallow copy is important: later code in the tick body may mutate the returned array (e.g. to mark agents as already activated in this tick), and mutating `world.agents` directly would corrupt the caller's state.
 

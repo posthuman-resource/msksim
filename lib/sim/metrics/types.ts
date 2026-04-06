@@ -91,6 +91,41 @@ export type PerWorldScalarMetrics = {
  * metrics are per-world by spec §7.1 — merging across worlds is meaningless (the
  * two worlds do not share agents or topology).
  */
+// ─── Graph metrics snapshot ───────────────────────────────────────────────────
+
+/**
+ * Per-tick snapshot of graph-derived observables.
+ * Produced by computeGraphMetrics (step 16); consumed by steps 17, 20, 22, 23.
+ *
+ * interactionGraphModularity and segregationIndex are Louvain Q scores,
+ * range [-1, +1]; values > 0.3 conventionally indicate non-trivial community
+ * structure (Blondel et al. 2008; Wikipedia: Louvain method).
+ *
+ * assimilationIndex is null when the tick contains no successful W2-Immigrant ↔
+ * W2-Native interactions (0/0 is undefined; null is chosen over NaN because JSON
+ * round-trips null faithfully while NaN becomes null silently).
+ */
+export interface GraphMetricsSnapshot {
+  readonly tick: number;
+  readonly world1: {
+    readonly largestClusterSize: number;
+    readonly clusterCount: number;
+  };
+  readonly world2: {
+    readonly largestClusterSize: number;
+    readonly clusterCount: number;
+  };
+  /** Louvain modularity of the cumulative successful-interaction graph. */
+  readonly interactionGraphModularity: number;
+  /**
+   * Among successful W2-Immigrant ↔ W2-Native interactions this tick,
+   * the fraction that occurred in L2. null when no such interactions exist.
+   */
+  readonly assimilationIndex: number | null;
+  /** Louvain modularity of the W2-Immigrant subgraph of the interaction graph. */
+  readonly segregationIndex: number;
+}
+
 export type ScalarMetricsSnapshot = {
   readonly tick: number | null;
   readonly world1: PerWorldScalarMetrics;

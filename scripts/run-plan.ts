@@ -150,7 +150,7 @@ function printHelp(): void {
       '  --no-server   skip dev-server harness for UI steps\n' +
       '  --force       override safety checks (dirty tree, out-of-order runs)\n' +
       '  --resume      stash dirty state from a killed prior step and continue\n' +
-      '  --help        show this message\n'
+      '  --help        show this message\n',
   );
 }
 
@@ -296,7 +296,7 @@ function listStepStatus(steps: Step[]): void {
   }
   const pending = steps.filter((s) => !completed.has(s.number));
   process.stdout.write(
-    `\n  ${completed.size}/${steps.length} completed, ${pending.length} pending\n`
+    `\n  ${completed.size}/${steps.length} completed, ${pending.length} pending\n`,
   );
 }
 
@@ -330,7 +330,7 @@ function handleDirtyTree(args: CliArgs): void {
     '\n  options:\n' +
       '    git stash push -u    # save changes to stash\n' +
       '    git checkout -- .    # discard changes (destructive)\n' +
-      '    run-plan --resume    # stash to refs/msksim-plan-abort/<timestamp> and continue\n'
+      '    run-plan --resume    # stash to refs/msksim-plan-abort/<timestamp> and continue\n',
   );
   process.exit(1);
 }
@@ -349,7 +349,7 @@ function selectStepsToRun(steps: Step[], args: CliArgs): Step[] {
     if (completed.has(s.number) && !args.force) {
       console.error(
         `step ${s.number} is already committed (${completed.get(s.number)?.slice(0, 7)}). ` +
-          `use --force to re-run.`
+          `use --force to re-run.`,
       );
       process.exit(1);
     }
@@ -361,7 +361,7 @@ function selectStepsToRun(steps: Step[], args: CliArgs): Step[] {
       if (missing.length > 0) {
         console.error(
           `cannot run step ${s.number}: prior steps not committed: ${missing.join(', ')}. ` +
-            `use --force to override.`
+            `use --force to override.`,
         );
         process.exit(1);
       }
@@ -369,11 +369,13 @@ function selectStepsToRun(steps: Step[], args: CliArgs): Step[] {
     return [s];
   }
 
-  const start = args.from ?? (() => {
-    // Find first pending step
-    const firstPending = steps.find((s) => !completed.has(s.number));
-    return firstPending?.number ?? null;
-  })();
+  const start =
+    args.from ??
+    (() => {
+      // Find first pending step
+      const firstPending = steps.find((s) => !completed.has(s.number));
+      return firstPending?.number ?? null;
+    })();
 
   if (!start) {
     process.stdout.write('all steps completed.\n');
@@ -381,13 +383,11 @@ function selectStepsToRun(steps: Step[], args: CliArgs): Step[] {
   }
 
   if (args.from && !args.force) {
-    const laterCompleted = steps.filter(
-      (s) => s.number >= args.from! && completed.has(s.number)
-    );
+    const laterCompleted = steps.filter((s) => s.number >= args.from! && completed.has(s.number));
     if (laterCompleted.length > 0) {
       console.error(
         `--from ${args.from} conflicts with already-committed later steps: ` +
-          `${laterCompleted.map((s) => s.number).join(', ')}. use --force to override.`
+          `${laterCompleted.map((s) => s.number).join(', ')}. use --force to override.`,
       );
       process.exit(1);
     }
@@ -407,14 +407,16 @@ function buildPrompt(step: Step, baseUrl: string | null): string {
   lines.push(`  2. docs/plan/${step.filename} — your detailed plan for this step`);
   lines.push('  3. docs/spec.md — specification sections referenced by your plan file');
   lines.push('');
-  lines.push('Follow the plan. All work for this step must land in exactly ONE commit with the subject line:');
+  lines.push(
+    'Follow the plan. All work for this step must land in exactly ONE commit with the subject line:',
+  );
   lines.push(`  step ${step.number}: ${step.title}`);
   lines.push('');
   lines.push(
     'If you learn new conventions or discover anything that future agents should know, ' +
       'append to the appropriate section of CLAUDE.md (respect the section line caps ' +
       'and the ≤ 30 lines per section per commit rule). Do NOT edit sections outside ' +
-      'your step\'s scope.'
+      "your step's scope.",
   );
   lines.push('');
   if (step.ui && baseUrl) {
@@ -422,7 +424,7 @@ function buildPrompt(step: Step, baseUrl: string | null): string {
       `A production build is already running at ${baseUrl} (next build && next start). ` +
         `Seed user credentials: username="${SEED_USER}" password="${SEED_PASS}". ` +
         `Use the chrome-devtools MCP tools for the UI verification script in your plan file. ` +
-        `Save screenshots to docs/screenshots/step-${step.number}.png and include them in your commit.`
+        `Save screenshots to docs/screenshots/step-${step.number}.png and include them in your commit.`,
     );
     lines.push('');
   }
@@ -437,7 +439,7 @@ async function spawnClaudeWithLog(
   env: NodeJS.ProcessEnv,
   logPath: string,
   timeoutMs: number,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<{ exitCode: number; timedOut: boolean; interrupted: boolean }> {
   if (dryRun) {
     process.stdout.write('--- dry run ---\n');
@@ -460,7 +462,7 @@ async function spawnClaudeWithLog(
       cwd: REPO_ROOT,
       env,
       stdio: ['inherit', 'pipe', 'pipe'],
-    }
+    },
   );
 
   const teeStream = (src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): void => {
@@ -476,7 +478,9 @@ async function spawnClaudeWithLog(
   let interrupted = false;
   const timeoutHandle = setTimeout(() => {
     timedOut = true;
-    process.stderr.write(`\n[run-plan] step timeout reached (${timeoutMs / 60000}min); sending SIGTERM\n`);
+    process.stderr.write(
+      `\n[run-plan] step timeout reached (${timeoutMs / 60000}min); sending SIGTERM\n`,
+    );
     proc.kill('SIGTERM');
     setTimeout(() => {
       if (!proc.killed) {
@@ -513,20 +517,20 @@ function verifyAndNormalizeCommit(step: Step, baselineSha: string): void {
 
   if (newCommits === 0) {
     throw new Error(
-      `step ${step.number} produced no commits. the step did not complete successfully.`
+      `step ${step.number} produced no commits. the step did not complete successfully.`,
     );
   }
 
   if (latest !== step.number) {
     throw new Error(
       `step ${step.number} completed but the latest commit is not marked with its step number ` +
-        `(latest marker found: ${latest ?? 'none'}). inspect git log and fix manually.`
+        `(latest marker found: ${latest ?? 'none'}). inspect git log and fix manually.`,
     );
   }
 
   if (newCommits > 1) {
     process.stdout.write(
-      `[run-plan] step ${step.number} produced ${newCommits} commits; squashing into one\n`
+      `[run-plan] step ${step.number} produced ${newCommits} commits; squashing into one\n`,
     );
     // Soft-reset to baseline and recommit with the canonical message
     git('reset', '--soft', baselineSha);
@@ -537,7 +541,7 @@ function verifyAndNormalizeCommit(step: Step, baselineSha: string): void {
     const canonical = `step ${step.number}: ${step.title}`;
     if (currentSubject !== canonical) {
       process.stdout.write(
-        `[run-plan] normalizing commit marker: "${currentSubject}" -> "${canonical}"\n`
+        `[run-plan] normalizing commit marker: "${currentSubject}" -> "${canonical}"\n`,
       );
       git('commit', '--amend', '-m', canonical);
     }
@@ -571,7 +575,7 @@ function runPostStepGates(step: Step): void {
     if (addedLines > 100) {
       throw new Error(
         `step ${step.number}: CLAUDE.md grew by ${addedLines} lines (> 100 cap). ` +
-          `review the diff and respect the section caps.`
+          `review the diff and respect the section caps.`,
       );
     }
     if (addedLines > 0) {
@@ -663,7 +667,7 @@ function ensureSeedUser(): void {
   const usersScript = path.join(REPO_ROOT, 'scripts', 'users.ts');
   if (!fs.existsSync(usersScript)) {
     process.stdout.write(
-      '[run-plan] scripts/users.ts not present yet; skipping seed-user creation\n'
+      '[run-plan] scripts/users.ts not present yet; skipping seed-user creation\n',
     );
     return;
   }
@@ -673,14 +677,10 @@ function ensureSeedUser(): void {
     cwd: REPO_ROOT,
     stdio: 'ignore',
   });
-  spawnSync(
-    'npx',
-    ['tsx', 'scripts/users.ts', 'change-password', SEED_USER, SEED_PASS],
-    {
-      cwd: REPO_ROOT,
-      stdio: 'ignore',
-    }
-  );
+  spawnSync('npx', ['tsx', 'scripts/users.ts', 'change-password', SEED_USER, SEED_PASS], {
+    cwd: REPO_ROOT,
+    stdio: 'ignore',
+  });
 }
 
 // ---------- per-step execution ----------
@@ -689,7 +689,7 @@ async function runStep(step: Step, args: CliArgs): Promise<void> {
   const baselineSha = currentHeadSha();
   const logPath = path.join(
     LOG_DIR,
-    `step-${step.number}-${new Date().toISOString().replace(/[:.]/g, '-')}.log`
+    `step-${step.number}-${new Date().toISOString().replace(/[:.]/g, '-')}.log`,
   );
 
   let server: ChildProcess | null = null;
@@ -711,7 +711,9 @@ async function runStep(step: Step, args: CliArgs): Promise<void> {
     }
 
     const prompt = buildPrompt(step, baseUrl);
-    process.stdout.write(`\n[run-plan] >>> step ${step.number}: ${step.title}${step.ui ? ' (UI)' : ''}\n`);
+    process.stdout.write(
+      `\n[run-plan] >>> step ${step.number}: ${step.title}${step.ui ? ' (UI)' : ''}\n`,
+    );
     process.stdout.write(`[run-plan] log: ${logPath}\n`);
 
     const result = await spawnClaudeWithLog(prompt, env, logPath, step.timeoutMs, args.dryRun);
@@ -762,7 +764,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  process.stdout.write(`[run-plan] will run ${toRun.length} step(s): ${toRun.map((s) => s.number).join(', ')}\n`);
+  process.stdout.write(
+    `[run-plan] will run ${toRun.length} step(s): ${toRun.map((s) => s.number).join(', ')}\n`,
+  );
 
   for (const step of toRun) {
     try {
@@ -770,7 +774,7 @@ async function main(): Promise<void> {
     } catch (e) {
       process.stderr.write(`\n[run-plan] error: ${(e as Error).message}\n`);
       process.stderr.write(
-        '[run-plan] aborting. fix the issue, clean the working tree, and re-run to resume.\n'
+        '[run-plan] aborting. fix the issue, clean the working tree, and re-run to resume.\n',
       );
       process.exit(1);
     }

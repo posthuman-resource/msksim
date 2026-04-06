@@ -18,10 +18,7 @@ import { redirect } from 'next/navigation';
 import { users } from '@/db/schema';
 import { db } from '@/lib/db/client';
 import { verifyPassword } from '@/lib/auth/password';
-import {
-  createSession,
-  setSessionCookie,
-} from '@/lib/auth/sessions';
+import { createSession, setSessionCookie } from '@/lib/auth/sessions';
 
 import { validateLoginInput, sanitizeNext } from './helpers';
 import type { LoginState } from './helpers';
@@ -41,10 +38,7 @@ const GENERIC_AUTH_ERROR: LoginState = { message: 'invalid credentials' };
  * NEXT_REDIRECT error that must propagate to the Next.js runtime.
  * See: node_modules/next/dist/docs/01-app/03-api-reference/04-functions/redirect.md
  */
-export async function loginAction(
-  _prevState: LoginState,
-  formData: FormData,
-): Promise<LoginState> {
+export async function loginAction(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   // Step 1 — validate form data. Treat any validation failure as an auth
   // failure so the response does not leak whether a field was malformed vs wrong.
   const parsed = validateLoginInput(formData);
@@ -53,11 +47,7 @@ export async function loginAction(
   const { username, password, next } = parsed.data;
 
   // Steps 2-6 — look up user and check password.
-  const rows = await db
-    .select()
-    .from(users)
-    .where(eq(users.username, username))
-    .limit(1);
+  const rows = await db.select().from(users).where(eq(users.username, username)).limit(1);
   const user = rows[0];
 
   if (!user) {

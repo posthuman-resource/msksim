@@ -147,7 +147,7 @@ async function main(): Promise<void> {
       process.stderr.write(err.message + '\n');
     } else {
       process.stderr.write(
-        (err instanceof Error ? err.stack ?? err.message : String(err)) + '\n'
+        (err instanceof Error ? (err.stack ?? err.message) : String(err)) + '\n',
       );
     }
     process.exit(1);

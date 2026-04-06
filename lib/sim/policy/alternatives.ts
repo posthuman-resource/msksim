@@ -10,8 +10,8 @@
 // stay on default labels; a researcher who renames languages in the UI will
 // use the 'default' policy instead. See docs/plan/12-language-selection-policies.md §5.
 
-import type { Language } from "@/lib/schema/primitives";
-import type { LanguagePolicy } from "../policy";
+import type { Language } from '@/lib/schema/primitives';
+import type { LanguagePolicy } from '../policy';
 
 // ─── Module-private label constants ───────────────────────────────────────────
 
@@ -19,8 +19,8 @@ import type { LanguagePolicy } from "../policy";
 // do NOT read l1Label/l2Label from a config because they take no config
 // argument. A regression here means alternatives silently use the wrong labels
 // if a researcher renames the languages — documented in CLAUDE.md Known gotchas.
-const L1_DEFAULT = "L1" as Language;
-const L2_DEFAULT = "L2" as Language;
+const L1_DEFAULT = 'L1' as Language;
+const L2_DEFAULT = 'L2' as Language;
 
 // ─── Alternative policies ─────────────────────────────────────────────────────
 

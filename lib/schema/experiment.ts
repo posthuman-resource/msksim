@@ -1,9 +1,13 @@
-import { z } from "zod";
-import { WeightUpdateRule } from "./primitives.js";
-import { WorldConfig } from "./world.js";
-import { LanguagePolicySet } from "./policy.js";
-import { PreferentialAttachmentConfig } from "./preferential.js";
-import { defaultLanguagePolicies, defaultWorldConfig, defaultPreferentialAttachmentConfig } from "./defaults.js";
+import { z } from 'zod';
+import { WeightUpdateRule } from './primitives.js';
+import { WorldConfig } from './world.js';
+import { LanguagePolicySet } from './policy.js';
+import { PreferentialAttachmentConfig } from './preferential.js';
+import {
+  defaultLanguagePolicies,
+  defaultWorldConfig,
+  defaultPreferentialAttachmentConfig,
+} from './defaults.js';
 import {
   DEFAULT_TICK_COUNT,
   DEFAULT_DELTA_POSITIVE,
@@ -12,10 +16,10 @@ import {
   DEFAULT_SEED,
   DEFAULT_SAMPLE_INTERVAL,
   DEFAULT_INTERACTION_MEMORY_SIZE,
-} from "./defaults.js";
+} from './defaults.js';
 
 // per docs/spec.md §4.1 F3 — scheduler mode for agent activation order
-export const SchedulerMode = z.enum(["sequential", "random", "priority"]);
+export const SchedulerMode = z.enum(['sequential', 'random', 'priority']);
 export type SchedulerMode = z.infer<typeof SchedulerMode>;
 
 // per docs/spec.md §4.1 F11 — top-level experiment configuration.
@@ -42,10 +46,10 @@ export const ExperimentConfig = z.object({
   retryLimit: z.number().int().nonnegative().default(DEFAULT_RETRY_LIMIT),
 
   // per docs/spec.md §3.5 — how token weights are updated on success
-  weightUpdateRule: WeightUpdateRule.default("additive"),
+  weightUpdateRule: WeightUpdateRule.default('additive'),
 
   // per docs/spec.md §4.1 F3 — scheduler mode
-  schedulerMode: SchedulerMode.default("random"),
+  schedulerMode: SchedulerMode.default('random'),
 
   // per docs/spec.md §4.1 F5 — full 4×4 (speakerClass, hearerClass) → rule matrix
   languagePolicies: LanguagePolicySet.default(defaultLanguagePolicies),

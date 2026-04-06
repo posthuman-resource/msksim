@@ -1,12 +1,12 @@
-import { z } from "zod";
-import { AgentClass, Language, Referent, TokenLexeme, Weight } from "./primitives.js";
-import { TopologyConfig } from "./topology.js";
+import { z } from 'zod';
+import { AgentClass, Language, Referent, TokenLexeme, Weight } from './primitives.js';
+import { TopologyConfig } from './topology.js';
 import {
   DEFAULT_AGENT_COUNT,
   DEFAULT_MONO_BI_RATIO,
   DEFAULT_REFERENTS,
   defaultVocabularySeed,
-} from "./defaults.js";
+} from './defaults.js';
 
 // per docs/spec.md §4.1 F2 — one seeded token entry in an agent's inventory
 const VocabularySeedEntry = z.object({
@@ -18,10 +18,7 @@ const VocabularySeedEntry = z.object({
 // Uses z.record with string keys because Language/Referent are branded strings at runtime.
 export const VocabularySeed = z.record(
   AgentClass,
-  z.record(
-    Language,
-    z.record(Referent, z.array(VocabularySeedEntry))
-  )
+  z.record(Language, z.record(Referent, z.array(VocabularySeedEntry))),
 );
 export type VocabularySeed = z.infer<typeof VocabularySeed>;
 
@@ -35,16 +32,20 @@ export const WorldConfig = z.object({
 
   // per docs/spec.md §4.1 F4 — spatial topology; defaults to 20×20 lattice
   topology: TopologyConfig.default({
-    type: "lattice",
+    type: 'lattice',
     width: 20,
     height: 20,
-    neighborhood: "moore",
+    neighborhood: 'moore',
   }),
 
   // per docs/spec.md §3.5 — referents as opaque strings; default matches PDF's two color categories.
   // `as any` because branded-string array types cannot be satisfied by plain string literals.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  referents: z.array(Referent).min(1).default(DEFAULT_REFERENTS as any),
+
+  referents: z
+    .array(Referent)
+    .min(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .default(DEFAULT_REFERENTS as any),
 
   // per docs/spec.md §4.1 F2 — initial token inventory per agent class.
   // `as any` for the same branded-string record-key reason as `referents`.

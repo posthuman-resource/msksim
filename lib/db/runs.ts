@@ -18,10 +18,7 @@ export async function createRun({
   seed: number;
   createdBy?: string | null;
 }): Promise<Run> {
-  const [row] = await db
-    .insert(runs)
-    .values({ configId, seed, createdBy })
-    .returning();
+  const [row] = await db.insert(runs).values({ configId, seed, createdBy }).returning();
   return row;
 }
 

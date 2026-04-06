@@ -9,10 +9,10 @@
 // interaction engine) can import LanguagePolicy without pulling in the
 // alternative-policy implementations or the registry's string table.
 
-import type { AgentState } from "./types";
-import type { RNG } from "./rng";
-import type { Language } from "@/lib/schema/primitives";
-import type { LanguagePolicySet } from "@/lib/schema/policy";
+import type { AgentState } from './types';
+import type { RNG } from './rng';
+import type { Language } from '@/lib/schema/primitives';
+import type { LanguagePolicySet } from '@/lib/schema/policy';
 
 // ─── Named policies ───────────────────────────────────────────────────────────
 
@@ -27,12 +27,7 @@ import type { LanguagePolicySet } from "@/lib/schema/policy";
  * 'mirror-hearer' — speaker uses whichever language has higher total weight in
  *                 the hearer's inventory (Baronchelli 2010 "consensus engineering").
  */
-export type PolicyName =
-  | "default"
-  | "always-l1"
-  | "always-l2"
-  | "random"
-  | "mirror-hearer";
+export type PolicyName = 'default' | 'always-l1' | 'always-l2' | 'random' | 'mirror-hearer';
 
 // ─── Policy types ─────────────────────────────────────────────────────────────
 

@@ -149,10 +149,7 @@ describe('sessions service', () => {
     // Token uniqueness must come from the CSPRNG, not from any time component.
     expect(t1).not.toBe(t2);
 
-    const rows = await db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.userId, user.id));
+    const rows = await db.select().from(sessions).where(eq(sessions.userId, user.id));
     expect(rows).toHaveLength(2);
   });
 
@@ -172,18 +169,12 @@ describe('sessions service', () => {
     await createSession(user.id);
     await createSession(user.id);
 
-    const before = await db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.userId, user.id));
+    const before = await db.select().from(sessions).where(eq(sessions.userId, user.id));
     expect(before).toHaveLength(3);
 
     await db.delete(users).where(eq(users.id, user.id));
 
-    const after = await db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.userId, user.id));
+    const after = await db.select().from(sessions).where(eq(sessions.userId, user.id));
     expect(after).toHaveLength(0);
   });
 

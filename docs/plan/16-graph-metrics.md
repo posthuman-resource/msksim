@@ -1,20 +1,20 @@
 ---
-step: "16"
-title: "graph metrics"
+step: '16'
+title: 'graph metrics'
 kind: sim-core
 ui: false
 timeout_minutes: 20
 prerequisites:
-  - "step 10: topology implementations"
-  - "step 11: agent bootstrapping"
-  - "step 13: interaction engine"
+  - 'step 10: topology implementations'
+  - 'step 11: agent bootstrapping'
+  - 'step 13: interaction engine'
 ---
 
 ## 1. Goal
 
 Implement the **graph-derived per-tick observables** from `docs/spec.md` §7.1 as a small, pure module that the step-20 simulation worker will call once per tick after the interaction engine (step 13) has produced its `InteractionEvent[]` for the tick. Five metrics land in this step:
 
-1. **Largest-cluster size** — the size of the largest connected component in the *token agreement graph*, where nodes are agents and an edge exists between any two agents that share at least one `(referent → top-weighted token)` mapping. Computed **per world** (once for World 1, once for World 2). This is the canonical Naming Game observable that `docs/spec.md` §2 cites as the signature of topology-induced coarsening.
+1. **Largest-cluster size** — the size of the largest connected component in the _token agreement graph_, where nodes are agents and an edge exists between any two agents that share at least one `(referent → top-weighted token)` mapping. Computed **per world** (once for World 1, once for World 2). This is the canonical Naming Game observable that `docs/spec.md` §2 cites as the signature of topology-induced coarsening.
 2. **Cluster count** — the number of connected components in the token agreement graph **with size ≥ 2**, per world. The `≥ 2` filter is deliberate: singletons (agents whose top-weighted tokens do not match anyone else's) are not a "cluster" in the sociolinguistic sense the research is probing. This is the observable `docs/spec.md` §7.1 enumerates and §2 argues is impossible under mean-field.
 3. **Interaction-graph modularity** — the Louvain modularity score on the **cumulative successful-interaction graph** (nodes = agents, undirected edges weighted by the frequency of successful interactions across all ticks so far). Computed via `graphology-communities-louvain`. This metric directly answers `docs/spec.md` RQ4 (emergent social cohesion) by measuring whether the interaction network fragments into communities.
 4. **Assimilation index** — among this tick's successful interactions between W2-Immigrants and W2-Natives, the fraction that occurred in L2. Rises toward 1 under assimilation, falls toward 0 under segregation. A **single scalar per tick** (not per world, because by construction it lives in World 2 only). This is the primary observable for `docs/spec.md` RQ1 and RQ5.
@@ -34,6 +34,7 @@ This step is parallel to step 15 (scalar metrics) and feeds step 17 (run-summary
 ## 3. Spec references
 
 - `docs/spec.md` **§7.1 (Per-tick scalar metrics)** — the authoritative list of what this step implements. The five load-bearing rows are:
+
   > **Largest-cluster size** — Size of the largest connected component in the "token agreement graph" (edges where two agents share a top-weighted token). RQ1, RQ2.
   > **Cluster count** — Number of connected components in the token-agreement graph with size ≥ 2. RQ1, RQ2.
   > **Interaction-graph modularity** — Louvain modularity score on the cumulative successful-interaction graph. High modularity = strong clustering. RQ2, RQ4.
@@ -41,6 +42,7 @@ This step is parallel to step 15 (scalar metrics) and feeds step 17 (run-summary
   > **Segregation index** — Louvain modularity of the subgraph restricted to W2-Immigrants. Rises when immigrants interact mostly among themselves. RQ1, RQ5.
 
   Every type, test, and implementation choice in this step traces back to one of these five rows.
+
 - `docs/spec.md` **§1.2 RQ1 — Assimilation vs. segregation thresholds.** "Under what population ratios (monolingual:bilingual) and interaction probabilities do bilingual immigrants in World 2 assimilate into the host linguistic community versus segregate into an insular one?" The assimilation index and segregation index are the two observables that **define** RQ1 operationally. Without them, RQ1 is unmeasurable; with them, step 28's parameter sweep can sweep `monoToBiRatio` along a grid and plot the threshold at which the assimilation index collapses, which is the publication-grade figure the researchers want. Step 16 is therefore on the critical path for RQ1.
 - `docs/spec.md` **§1.2 RQ2 — Role of spatial topology.** "Does a 2D lattice constraint produce qualitatively different macroscopic outcomes than well-mixed populations with identical composition?" The largest-cluster size and cluster count are the primary observables for RQ2: `docs/spec.md` §2 states explicitly that well-mixed populations cannot sustain multiple coexisting clusters, so a cluster count that stays at 1 under well-mixed mode and climbs above 1 under lattice mode **is** the empirical falsification of the "lattice doesn't matter" null hypothesis. Step 16's token-agreement-graph construction is the mechanism by which that falsification becomes measurable.
 - `docs/spec.md` **§1.2 RQ4 — Emergent social cohesion.** "To what extent does successful communication predict or drive social bonding (measured as interaction-graph density and clustering)?" The interaction-graph modularity metric is the direct operationalization — the question "are there cohesive subgroups?" maps exactly to "is Louvain Q non-trivially positive?" The cumulative-interaction-graph contract in this step is the reason step 23 (network view) can layer a visualisation on top of the same graph object without a separate build, because both step 16 and step 23 share the graphology Graph maintained by the worker.

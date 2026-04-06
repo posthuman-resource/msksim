@@ -4,9 +4,9 @@
 // This module is client-safe, server-safe, and worker-safe — no `import 'server-only'`.
 // It is imported by both lib/sim/engine.ts and the step-20 Web Worker via Comlink.
 
-import type { Language, Referent, TokenLexeme, Weight } from "@/lib/schema/primitives";
-import type { Inventory } from "../types";
-import { inventoryIncrement, inventorySet } from "../types";
+import type { Language, Referent, TokenLexeme, Weight } from '@/lib/schema/primitives';
+import type { Inventory } from '../types';
+import { inventoryIncrement, inventorySet } from '../types';
 
 /**
  * Return a new Inventory with the specified token weight updated by `delta`.
@@ -39,22 +39,15 @@ export function updateWeight(
   referent: Referent,
   lexeme: TokenLexeme,
   delta: number,
-  mode: "additive" | "l1-normalized",
+  mode: 'additive' | 'l1-normalized',
 ): Inventory {
   switch (mode) {
-    case "additive":
+    case 'additive':
       return inventoryIncrement(inventory, language, referent, lexeme, delta, 0);
 
-    case "l1-normalized": {
+    case 'l1-normalized': {
       // Step 1: apply additive increment (floor at 0).
-      const intermediate = inventoryIncrement(
-        inventory,
-        language,
-        referent,
-        lexeme,
-        delta,
-        0,
-      );
+      const intermediate = inventoryIncrement(inventory, language, referent, lexeme, delta, 0);
 
       // Step 2: extract the (language, referent) sub-map from the intermediate.
       const refMap = intermediate.get(language)?.get(referent);
@@ -78,13 +71,7 @@ export function updateWeight(
       // Thread returned inventories through the loop (immutable-write discipline).
       let current: Inventory = intermediate;
       for (const [lex, weight] of refMap) {
-        current = inventorySet(
-          current,
-          language,
-          referent,
-          lex,
-          (weight / total) as Weight,
-        );
+        current = inventorySet(current, language, referent, lex, (weight / total) as Weight);
       }
       return current;
     }

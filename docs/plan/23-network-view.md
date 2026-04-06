@@ -1,12 +1,12 @@
 ---
-step: "23"
-title: "network view"
+step: '23'
+title: 'network view'
 kind: ui
 ui: true
 timeout_minutes: 40
 prerequisites:
-  - "step 16: graph metrics"
-  - "step 21: lattice canvas renderer"
+  - 'step 16: graph metrics'
+  - 'step 21: lattice canvas renderer'
 ---
 
 ## 1. Goal
@@ -19,13 +19,13 @@ Implement **F8 (Live network view)** from `docs/spec.md` §4.2: a WebGL renderin
 - **Interaction**: sigma.js's default camera supports **zoom (mouse wheel) and pan (click-drag)** out of the box. No extra configuration is required for v1; we only verify the camera's `ratio` changes after a scroll event in the MCP script.
 - **Empty state**: for the first few ticks the interaction graph is essentially empty (fewer than a handful of edges). The view renders a placeholder message ("Waiting for interactions… (0 nodes, 0 edges)") until the graph has at least **N = 4** nodes **and** **M = 3** edges. These thresholds are intentionally low — just enough to make a visual graph meaningful — and are documented inline so later tuning is a single-constant change.
 
-This step is the primary visualization for **RQ1** (assimilation vs. segregation, visible as community separation in the cumulative interaction graph) and **RQ4** (emergent social cohesion, measured as Louvain modularity of the same graph). The step-16 plan file already commits to exporting `computeInteractionGraphCommunities` *precisely* so step 23 can call it on-demand; step 23 consumes that export through the worker boundary.
+This step is the primary visualization for **RQ1** (assimilation vs. segregation, visible as community separation in the cumulative interaction graph) and **RQ4** (emergent social cohesion, measured as Louvain modularity of the same graph). The step-16 plan file already commits to exporting `computeInteractionGraphCommunities` _precisely_ so step 23 can call it on-demand; step 23 consumes that export through the worker boundary.
 
 The scope boundary is strict: step 23 does **not** re-implement graph metrics (step 16 owns them), does **not** touch the lattice renderer (step 21 owns it), does **not** introduce new persistence (step 26 handles runs), and does **not** add interactive sliders beyond the simple tab toggle (step 24 covers the control bar). Step 23 is the third visualization pane in the playground shell and nothing more.
 
 ## 2. Prerequisites
 
-- Commit marker `step 16: graph metrics` present in `git log`. Step 16 installed `graphology-communities-louvain`, added the `createInteractionGraph`/`updateInteractionGraph` helpers to `lib/sim/metrics/interaction-graph.ts`, and — load-bearing for step 23 — exported the `computeInteractionGraphCommunities(interactionGraph, rng)` helper from `lib/sim/metrics/graph.ts` that returns `{ assignments: Map<AgentId, number>; count: number; modularity: number }`. Step 23 calls this helper through the worker boundary (via the new `getInteractionGraph` method added in section 6). Step 16's plan §3 explicitly flags this as the reason the helper exists: *"step 16 must produce two derivative outputs for step 23's downstream consumption: the `modularity` scalar (lands in the snapshot) and, as an optional second return, a `communityAssignments: Map<AgentId, number>` produced by `louvain.detailed()` — step 23 will read this from the worker's cached state to color nodes."*
+- Commit marker `step 16: graph metrics` present in `git log`. Step 16 installed `graphology-communities-louvain`, added the `createInteractionGraph`/`updateInteractionGraph` helpers to `lib/sim/metrics/interaction-graph.ts`, and — load-bearing for step 23 — exported the `computeInteractionGraphCommunities(interactionGraph, rng)` helper from `lib/sim/metrics/graph.ts` that returns `{ assignments: Map<AgentId, number>; count: number; modularity: number }`. Step 23 calls this helper through the worker boundary (via the new `getInteractionGraph` method added in section 6). Step 16's plan §3 explicitly flags this as the reason the helper exists: _"step 16 must produce two derivative outputs for step 23's downstream consumption: the `modularity` scalar (lands in the snapshot) and, as an optional second return, a `communityAssignments: Map<AgentId, number>` produced by `louvain.detailed()` — step 23 will read this from the worker's cached state to color nodes."_
 - Commit marker `step 20: simulation worker integration` present in `git log`. Step 20 created `workers/simulation.worker.ts` with the typed `SimulationWorkerApi` interface and its six methods (`init`, `step`, `run`, `getMetrics`, `getSnapshot`, `reset`), and the client wrapper at `lib/sim/worker-client.ts` that exports `createSimulationWorker(): { api, terminate }`. **Step 20 does not include a `getInteractionGraph` method — step 23 is responsible for extending the worker API.** The extension is additive: step 23 appends a seventh method to both the worker implementation and the TypeScript interface; no step-20 behavior changes.
 - Commit marker `step 21: lattice canvas renderer` present in `git log`. Step 21 landed the `SimulationShell` client component at `app/(auth)/playground/simulation-shell.tsx` that constructs the worker inside a `useEffect`, polls `getMetrics`/`getSnapshot` on a tick loop, and hosts the lattice canvas view. **Step 21 does not include a tab toggle** — it renders the lattice canvas as the single primary view. Step 23 is responsible for introducing a `view` state (`'lattice' | 'network'`, and later `'metrics'` in step 22) and the tab UI that switches between them. If steps 22 and 23 are dispatched in parallel (they are in Wave 6), the implementing claude for step 23 MUST handle a possible merge conflict in `simulation-shell.tsx`: the tab UI should use a union type `'lattice' | 'metrics' | 'network'` and both tabs should be wired in. Coordinate via the grep-first protocol in section 7.
 - Commit marker `step 22: metrics dashboard` **may or may not** be present. Step 22 adds the metrics dashboard pane (`app/(auth)/playground/metrics-dashboard.tsx`) and is dispatched in the same wave as step 23. The plan file for step 23 does not assume step 22 has landed; the implementing claude detects this via `git log --grep='^step 22:'` and wires the tab UI to include a `'metrics'` tab only if step 22's file exists. If step 22 has not yet landed, step 23's tab UI exposes only `'lattice' | 'network'` and a later touch-up from step 22 (or a follow-up cleanup commit) adds the third tab. This keeps the step-23 commit self-contained regardless of dispatch order within Wave 6.
@@ -34,23 +34,31 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
 ## 3. Spec references
 
 - `docs/spec.md` **§4.2 F8 (Live network view)**:
+
   > A WebGL graph rendering showing the cumulative interaction network (nodes = agents, edges = past successful interactions weighted by frequency). Overlays Louvain community detection to highlight emergent clusters. **Acceptance.** Updates incrementally as interactions accumulate; Louvain clusters are color-coded and stable across small perturbations; the view supports zoom/pan. **Supports.** RQ1, RQ4 — this is the primary visualization of social bonding and ghettoization.
 
   Every acceptance criterion in this row maps to a concrete implementation choice in step 23: "WebGL" → sigma.js v3 (which renders via WebGL by default), "cumulative interaction network" → the step-16 `interactionGraph` already maintained by the worker, "Louvain community detection" → step 16's `computeInteractionGraphCommunities`, "color-coded" → the Okabe-Ito palette mapping, "incremental updates" → the shell's low-frequency `getInteractionGraph` polling (every 10 ticks by default), "zoom/pan" → sigma's default camera controls.
+
 - `docs/spec.md` **§7.1 (Per-tick scalar metrics), "Interaction-graph modularity" row**:
+
   > Louvain modularity score on the cumulative successful-interaction graph. High modularity = strong clustering. RQ2, RQ4.
 
   The modularity metric and the community-coloring overlay operate on the **same** `interactionGraph` object. Step 16 computes the scalar; step 23 renders the structure. Maintaining a single worker-owned cumulative graph (per step 16's plan §7 "Step three is the interaction-graph helper") is the contract that lets both metrics and visualization stay in lockstep without double-counting edges or diverging on the Louvain partition.
+
 - `docs/spec.md` **§1.2 RQ4 — Emergent social cohesion**:
+
   > To what extent does successful communication predict or drive social bonding (measured as interaction-graph density and clustering)?
 
-  RQ4 is the primary research question the network view answers. Density is visible as edge saturation; clustering is visible as community coloring. Without the network view, RQ4 is only inferable from the scalar modularity number on the metrics dashboard — the visualization is what makes the answer *interpretable*.
+  RQ4 is the primary research question the network view answers. Density is visible as edge saturation; clustering is visible as community coloring. Without the network view, RQ4 is only inferable from the scalar modularity number on the metrics dashboard — the visualization is what makes the answer _interpretable_.
+
 - `docs/spec.md` **§1.2 RQ1 — Assimilation vs. segregation thresholds**. RQ1 is operationalized by the assimilation and segregation indices (scalar, step 16) and by the network view's visible separation of W2-Immigrant communities from W2-Native communities (step 23). The visual answer is the one researchers will screenshot for their publication figures; the scalar answer is what goes into the CSV export (step 30). Both derive from the same underlying graph.
 - `docs/spec.md` **§8 (Architecture Sketch), "Network WebGL view" node in the ASCII diagram**. The architecture diagram explicitly lists "Network WebGL view" as one of the three visualizations the `SimulationShell` client component hosts (the other two are "Lattice canvas (per world)" and "Time-series charts"). Step 23 fulfills that diagram node.
 - `docs/spec.md` **§9 (Capability Requirements), "Network rendering" row**:
-  > **sigma.js** — pairs natively with graphology, WebGL-accelerated. | cytoscape.js, vis-network. See Cylynx's comparison. | Handles the growing interaction graph smoothly.
+
+  > **sigma.js** — pairs natively with graphology, WebGL-accelerated. \| cytoscape.js, vis-network. See Cylynx's comparison. \| Handles the growing interaction graph smoothly.
 
   The spec explicitly names sigma.js as the leading candidate. Step 23 adopts it. The "also viable" alternatives (cytoscape.js, vis-network) are evaluated and rejected in the paths-not-taken section of the research notes.
+
 - `docs/spec.md` **§12.3 (Graph analysis and visualization)**: the citations include `https://www.sigmajs.org/` and `https://github.com/jacomyal/sigma.js/` as the canonical upstream sources. Step 23's research notes WebFetch these URLs and verify the current v3 API matches the plan file's expectations.
 
 ## 4. Research notes
@@ -68,15 +76,15 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
 **External references (WebFetched):**
 
 5. **`https://www.sigmajs.org/`** and **`https://github.com/jacomyal/sigma.js`** (WebFetched during research). Load-bearing facts confirmed:
-   - **Current stable version**: **`sigma@3.0.2`**, published 2025-05-27 on npm. The `latest` dist-tag on npm points at `3.0.2` (verified via `npm view sigma version`). The major version is **3** (the rewrite the step-specific context flags), *not* v2 — step 23 must import from `sigma` as `import Sigma from 'sigma';` (default export) rather than any v2 namespace pattern. The `sigma` package on npm declares **no hard peer dependency on graphology** in its `package.json` (graphology is a regular dep of sigma-backed apps, and step 23 has it already from step 10); the only declared peer is `graphology-types >=0.19.0` which is bundled via graphology itself.
+   - **Current stable version**: **`sigma@3.0.2`**, published 2025-05-27 on npm. The `latest` dist-tag on npm points at `3.0.2` (verified via `npm view sigma version`). The major version is **3** (the rewrite the step-specific context flags), _not_ v2 — step 23 must import from `sigma` as `import Sigma from 'sigma';` (default export) rather than any v2 namespace pattern. The `sigma` package on npm declares **no hard peer dependency on graphology** in its `package.json` (graphology is a regular dep of sigma-backed apps, and step 23 has it already from step 10); the only declared peer is `graphology-types >=0.19.0` which is bundled via graphology itself.
    - **Canonical instantiation pattern** (confirmed by the README at `https://github.com/jacomyal/sigma.js/blob/main/README.md`):
      ```js
-     import Graph from "graphology";
-     import Sigma from "sigma";
+     import Graph from 'graphology';
+     import Sigma from 'sigma';
      const graph = new Graph();
-     graph.addNode("1", { label: "Node 1", x: 0, y: 0, size: 10, color: "blue" });
-     graph.addEdge("1", "2", { size: 5, color: "purple" });
-     const sigmaInstance = new Sigma(graph, document.getElementById("container"));
+     graph.addNode('1', { label: 'Node 1', x: 0, y: 0, size: 10, color: 'blue' });
+     graph.addEdge('1', '2', { size: 5, color: 'purple' });
+     const sigmaInstance = new Sigma(graph, document.getElementById('container'));
      ```
      Sigma v3's constructor is `new Sigma(graph, container, settings?)` where `graph` is a `graphology.Graph` instance, `container` is an `HTMLElement`, and `settings` is an optional `Partial<Settings>` object. Sigma reads node/edge attributes directly from graphology — it does not own its own per-node state — so every attribute update must go through `graph.setNodeAttribute(id, key, value)` or `graph.mergeNodeAttributes(id, attrs)` and is picked up on the next rendered frame automatically. This is load-bearing for step 23's community-coloring update: recoloring nodes is just a loop over `graph.setNodeAttribute(id, 'color', okabeItoColor(communityId))`, no sigma API call required.
    - **Cleanup**: `sigmaInstance.kill()` is the documented teardown method. It releases WebGL resources, unbinds mouse/touch event listeners, and detaches the camera. Step 23 calls it from the `useEffect` cleanup function, matching `CLAUDE.md` "Worker lifecycle" discipline for effect idempotence.
@@ -95,16 +103,16 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
 
 8. **Okabe-Ito colorblind-safe palette** — `https://jfly.uni-koeln.de/color/` (WebFetched; Masataka Okabe and Kei Ito, 2008, "Color Universal Design") and `https://en.wikipedia.org/wiki/Color_blindness#Accessibility` (background). The palette is the de-facto standard qualitative palette for scientific visualization when a deuteranopia/protanopia-safe set of distinguishable hues is required. The 8 colors and their hex codes, in the order the step-23 palette array uses them, are:
 
-   | Index | Name            | Hex       |
-   |-------|-----------------|-----------|
-   | 0     | Black           | `#000000` |
-   | 1     | Orange          | `#E69F00` |
-   | 2     | Sky Blue        | `#56B4E9` |
-   | 3     | Bluish Green    | `#009E73` |
-   | 4     | Yellow          | `#F0E442` |
-   | 5     | Blue            | `#0072B2` |
-   | 6     | Vermillion      | `#D55E00` |
-   | 7     | Reddish Purple  | `#CC79A7` |
+   | Index | Name           | Hex       |
+   | ----- | -------------- | --------- |
+   | 0     | Black          | `#000000` |
+   | 1     | Orange         | `#E69F00` |
+   | 2     | Sky Blue       | `#56B4E9` |
+   | 3     | Bluish Green   | `#009E73` |
+   | 4     | Yellow         | `#F0E442` |
+   | 5     | Blue           | `#0072B2` |
+   | 6     | Vermillion     | `#D55E00` |
+   | 7     | Reddish Purple | `#CC79A7` |
 
    These 8 hex values are encoded as a module-level constant array `OKABE_ITO` in `network-view.tsx` and consumed by the pure helper `communityColor(communityId: number): string` that does `OKABE_ITO[communityId % OKABE_ITO.length]`. The modulo lets communities > 8 wrap deterministically; for the N ≤ 500 agent counts the spec targets, Louvain typically returns 2–6 communities on a well-connected cumulative graph, so wraparound is rare in practice. The pure helper is the only piece of step 23 that is Vitest-tested (see section 9) — everything else is MCP-verified.
 
@@ -120,7 +128,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
 
 13. **Diffing the serialized graph incrementally vs rebuilding from scratch.** This is the explicit trade-off the step-specific context asks to document. Step 23 picks **full rebuild on every poll** for v1. Rationale: (a) the serialized `graph.export()` format is a plain JSON-serializable object with two arrays (`nodes`, `edges`); constructing a new graphology instance via `Graph.from(serialized)` is O(N + E) and for N ≤ 500 takes well under 10 ms, which is comfortably inside the 100 ms human-perceptible latency budget; (b) incremental diffing would require the shell to compute added/removed nodes and added/modified edges between two serialized forms, which is itself O(N + E) and introduces edge cases (what if the step-16 helper produces a slightly different edge ordering between snapshots?) that bloat the implementation without changing the asymptotic cost; (c) the sigma renderer itself reads the graph's attributes on every frame, so as long as `graph.setNodeAttribute` is called after the rebuild, sigma automatically picks up the new positions and colors — there is no "sigma doesn't know the graph changed" failure mode to worry about. The trade-off is that full rebuilds lose the warm-start advantage of ForceAtlas2 unless the shell explicitly carries positions across rebuilds; step 23 does this by caching `Map<AgentId, {x, y}>` in a `useRef` and re-applying cached positions after the rebuild, before calling `forceAtlas2.assign`. This gets the best of both worlds: simple rebuild logic + warm-started layout. Documented inline in the component with a comment block explaining the choice so a future v2 refactor to true incremental diffing can reference it. **Decision for v1: full rebuild + position cache.**
 
-14. **Serializing the graph as Comlink-proxied handle instead of a JSON export.** Considered and rejected. Comlink can marshal complex objects via `Comlink.proxy(value)` — step 20 already uses this pattern for the `onProgress` callback in `run(totalTicks, onProgress)`. In principle, step 23 could keep the graphology `Graph` object alive inside the worker and expose a proxied handle to the main thread, and the main thread would call methods on the handle (`.order`, `.nodes()`, `.forEachEdge(...)`). Rejected because: (a) every method call on a Comlink proxy is an async round-trip over the postMessage boundary, so iterating nodes/edges via `graph.forEachNode(...)` would fire hundreds of structured-clone messages per render; (b) the sigma.js v3 constructor expects a *local* graphology `Graph` instance — it reads attributes synchronously and does not tolerate a proxy that returns promises; (c) `graphology`'s built-in `.export()` method emits a flat, `structuredClone`-safe JSON object (`{ nodes: [{key, attributes}], edges: [{source, target, attributes}] }`) that is the idiomatic wire format for exactly this use case. **Decision**: use `graph.export()` on the worker side and `Graph.from(serialized)` on the main side. The step-23 wire format is plain JSON; the Comlink channel stays simple.
+14. **Serializing the graph as Comlink-proxied handle instead of a JSON export.** Considered and rejected. Comlink can marshal complex objects via `Comlink.proxy(value)` — step 20 already uses this pattern for the `onProgress` callback in `run(totalTicks, onProgress)`. In principle, step 23 could keep the graphology `Graph` object alive inside the worker and expose a proxied handle to the main thread, and the main thread would call methods on the handle (`.order`, `.nodes()`, `.forEachEdge(...)`). Rejected because: (a) every method call on a Comlink proxy is an async round-trip over the postMessage boundary, so iterating nodes/edges via `graph.forEachNode(...)` would fire hundreds of structured-clone messages per render; (b) the sigma.js v3 constructor expects a _local_ graphology `Graph` instance — it reads attributes synchronously and does not tolerate a proxy that returns promises; (c) `graphology`'s built-in `.export()` method emits a flat, `structuredClone`-safe JSON object (`{ nodes: [{key, attributes}], edges: [{source, target, attributes}] }`) that is the idiomatic wire format for exactly this use case. **Decision**: use `graph.export()` on the worker side and `Graph.from(serialized)` on the main side. The step-23 wire format is plain JSON; the Comlink channel stays simple.
 
 **Research quality summary**: 4 local Next.js 16 docs (items 1, 2, 3, 4) + 4 external URLs WebFetched (sigma homepage + GitHub, forceatlas2 GitHub + npm, Okabe-Ito Jfly page + Wikipedia, Blondel 2008 inherited from step 16 as upstream primary) + 6 paths not taken (cytoscape, vis-network, three.js, ForceAtlas2-every-tick, incremental diffing, Comlink-proxied handle) = **14 research items**, comfortably clearing the quality gates (≥ 3 local Next docs, ≥ 2 external URLs, ≥ 1 path not taken, total ≥ 5). **Sigma v3 version verified at execution time via `npm view sigma version` (expected: ≥ 3.0.2 as of 2025-05-27).**
 
@@ -134,6 +142,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
   - No imports from `@/lib/auth/*`, `@/lib/db/*`, or anything carrying `import 'server-only'`. The file is client-side only.
 
   Props shape (TypeScript interface):
+
   ```ts
   interface NetworkViewProps {
     graph: SerializedGraph | null;
@@ -142,6 +151,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
     minEdges?: number; // default 3
   }
   ```
+
   `graph` is the serialized form from the worker's new `getInteractionGraph` method (added in section 6). `communities` is the per-node community assignment map from `computeInteractionGraphCommunities`. Both are `null` until the shell has polled at least once and both are passed down together (so a rebuild uses matching graph + community snapshots).
 
   The component body:
@@ -165,6 +175,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
      - Return the cleanup function: `() => { sigma.kill(); }`. Do **not** null out the graph ref or the position cache — those survive across re-renders intentionally (warm-start) and are only reset when the component unmounts entirely (handled by React automatically).
 
   The JSX:
+
   ```jsx
   return (
     <div className="relative w-full h-[600px] bg-slate-900 rounded">
@@ -177,15 +188,23 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
     </div>
   );
   ```
+
   The `data-testid="sigma-container"` is the MCP script's handle for `wait_for`. Tailwind classes match the rest of the playground shell established in step 21 (dark background, rounded corners, fixed height).
 
   At module scope, outside the component:
+
   ```ts
   // Okabe-Ito colorblind-safe qualitative palette (hex codes from Okabe & Ito 2008).
   // Order: [black, orange, sky blue, bluish green, yellow, blue, vermillion, reddish purple].
   export const OKABE_ITO = [
-    '#000000', '#E69F00', '#56B4E9', '#009E73',
-    '#F0E442', '#0072B2', '#D55E00', '#CC79A7',
+    '#000000',
+    '#E69F00',
+    '#56B4E9',
+    '#009E73',
+    '#F0E442',
+    '#0072B2',
+    '#D55E00',
+    '#CC79A7',
   ] as const;
 
   /**
@@ -201,6 +220,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
     return OKABE_ITO[Math.floor(communityId) % OKABE_ITO.length];
   }
   ```
+
   Both `OKABE_ITO` and `communityColor` are exported from the component file so the sibling test file can import them without pulling in React or sigma.
 
   File size: ~160-200 lines including doc comments and JSX.
@@ -229,6 +249,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
 - **`workers/simulation.worker.ts`** — add a seventh method `getInteractionGraph()` to the `SimulationWorkerApi` interface and the `api` implementation object. This is the step-23 worker API extension explicitly flagged in the step-specific context. The addition is additive; no step-20 semantics change.
 
   Interface change:
+
   ```ts
   export interface InteractionGraphReport {
     graph: SerializedGraph; // from 'graphology' — plain JSON, structured-clone safe
@@ -249,9 +270,11 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
     getInteractionGraph(): Promise<InteractionGraphReport>;
   }
   ```
+
   The `communities` field is serialized as an array of `[key, value]` tuples rather than a `Map` because structured-clone treats `Map` inconsistently across browser versions and the quadruple-array form used in step 20's `FullStateSnapshot.inventory` establishes the precedent for "serialize keyed collections as arrays across the wire." The main-thread wrapper rehydrates to a `Map` in the shell before passing to `network-view.tsx`.
 
   Implementation (at the bottom of the `api` object, after `reset`):
+
   ```ts
   getInteractionGraph: async () => {
     if (state === null) {
@@ -267,6 +290,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
     };
   },
   ```
+
   The `computeInteractionGraphCommunities` import is added to the worker's import list at the top of the file (from `@/lib/sim/metrics/graph`, which already exports it per step 16's plan). The `SerializedGraph` type import is added from `'graphology'`. The worker's existing `state.interactionGraph` field (established by step 20's `init` via `createInteractionGraph()`) is the exact object step 16's helper operates on — nothing new is created.
 
   **Determinism note**: `computeInteractionGraphCommunities` consumes the seeded RNG via `state.rng`, so calling `getInteractionGraph()` repeatedly on an unchanged graph produces the same community assignments bit-for-bit (as long as step 16's Louvain RNG plumbing is correct, which it is per step 16's plan §7). However, calling `getInteractionGraph()` **does** advance the RNG state because the Louvain call draws from it, which is a subtle wire-crossing side effect. **To preserve the `CLAUDE.md` "Worker lifecycle" determinism invariant** (`run(N, ...)` twice with the same `(config, seed)` produces bit-identical output), `getInteractionGraph()` must **not** use `state.rng` directly — it must use a **derived child RNG** seeded from `state.config.seed` (or a dedicated `visualizationRng` field added to `state` during `init`) so that visualization polling never perturbs the simulation RNG. The implementing claude adds this child-RNG discipline: in the `init` slice, alongside `state.rng`, create `state.visualizationRng = createRng(config.seed + 1)` (or an analogous distinct-seed scheme, documented inline). `getInteractionGraph()` then passes `state.visualizationRng` into the Louvain call. This decouples visualization polling from simulation progression without sacrificing determinism — the visualization RNG is itself deterministic given the same seed, so community colors are reproducible across identical runs.
@@ -274,14 +298,16 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
   File modification is **additive only**: no existing lines are changed, only new lines added. The commit diff for `workers/simulation.worker.ts` should show zero deletions and roughly 20-30 new lines.
 
 - **`lib/sim/worker-client.ts`** — extend the type-only re-exports to include the new `InteractionGraphReport` type and the extended `SimulationWorkerApi` (which automatically picks up the new method because the re-export is type-only and the TypeScript compiler follows the worker module's interface declaration). Add a line:
+
   ```ts
   export type { InteractionGraphReport } from '@/workers/simulation.worker';
   ```
+
   No other changes. The `createSimulationWorker()` factory's return shape is `{ api: Remote<SimulationWorkerApi>; terminate: () => void }`; `Remote<SimulationWorkerApi>` automatically exposes the new `getInteractionGraph` method as a promise-returning proxy because the underlying interface gained the method. No runtime change to `worker-client.ts` is needed — the extension is purely at the type level.
 
 - **`app/(auth)/playground/simulation-shell.tsx`** — add the view-toggle tab UI and wire the network view into the shell. This is the step-23 integration point with step 21's work.
 
-  Grep-first protocol: before editing, run `grep -n "view" app/\(auth\)/playground/simulation-shell.tsx` to find step 21's existing view state (if any). Step 21's plan will have introduced *some* kind of state for the lattice canvas — it may have called it `activeView`, `pane`, `tab`, or just not parameterized it at all. The step-23 implementing claude reads the file, finds the relevant state, and extends it rather than creating a parallel state.
+  Grep-first protocol: before editing, run `grep -n "view" app/\(auth\)/playground/simulation-shell.tsx` to find step 21's existing view state (if any). Step 21's plan will have introduced _some_ kind of state for the lattice canvas — it may have called it `activeView`, `pane`, `tab`, or just not parameterized it at all. The step-23 implementing claude reads the file, finds the relevant state, and extends it rather than creating a parallel state.
 
   Expected edits (may be updated at execution time based on step 21's actual file structure):
   1. Import `NetworkView` from `./network-view`. Also `import type { SerializedGraph } from 'graphology';` for typing the graph state.
@@ -291,9 +317,21 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
   5. Render the tab nav bar above the view area. Example structure:
      ```jsx
      <div className="flex gap-2 border-b border-slate-700 mb-3">
-       <button onClick={() => setView('lattice')} className={tabClass('lattice')}>Lattice</button>
-       {metricsAvailable && <button onClick={() => setView('metrics')} className={tabClass('metrics')}>Metrics</button>}
-       <button onClick={() => setView('network')} className={tabClass('network')} data-testid="tab-network">Network</button>
+       <button onClick={() => setView('lattice')} className={tabClass('lattice')}>
+         Lattice
+       </button>
+       {metricsAvailable && (
+         <button onClick={() => setView('metrics')} className={tabClass('metrics')}>
+           Metrics
+         </button>
+       )}
+       <button
+         onClick={() => setView('network')}
+         className={tabClass('network')}
+         data-testid="tab-network"
+       >
+         Network
+       </button>
      </div>
      ```
      The `data-testid="tab-network"` attribute is the MCP script's click target. Tailwind styling matches step 21's existing UI.
@@ -312,6 +350,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
   **Merge-conflict handling with step 22**: if step 22 runs before step 23 in Wave 6 dispatch order, step 22 will have already added the `'metrics'` tab and its polling state. Step 23 only adds the `'network'` tab, the `interactionGraph` state, the network poll, and the conditional render. If step 23 runs before step 22, step 23 creates the tab bar with just `'lattice' | 'network'` and leaves a comment `// TODO(step-22): add metrics tab`. Either way, the step-23 commit is self-contained: it does not modify any non-tab line.
 
 - **`package.json`** — add two runtime dependencies. The agent must run `npm view sigma version` and `npm view graphology-layout-forceatlas2 version` at execution time to capture the current stable releases, then `npm install sigma@<v1> graphology-layout-forceatlas2@<v2>`. At the time of writing this plan file, the expected versions are **`sigma@3.0.2`** (published 2025-05-27, the latest stable v3 release) and **`graphology-layout-forceatlas2@0.10.1`**. The agent does **not** hard-code these versions in the plan — re-check at execution time. `package.json` should have new entries approximately:
+
   ```json
   "dependencies": {
     ...existing...,
@@ -319,6 +358,7 @@ The scope boundary is strict: step 23 does **not** re-implement graph metrics (s
     "graphology-layout-forceatlas2": "^0.10.1"
   }
   ```
+
   No `@types/...` packages are needed — both sigma v3 and `graphology-layout-forceatlas2` ship bundled TypeScript declarations. `graphology` and `graphology-communities-louvain` are already in `dependencies` from steps 10 and 16 and are **not** reinstalled. `package-lock.json` updates automatically and is committed.
 
 - **`CLAUDE.md`** — append ≤ 15 lines. See section 11 for exact text.
@@ -335,7 +375,7 @@ The work is ordered so types and dependencies land first, then the worker API ex
 
 **Slice three — extend the client wrapper's type re-exports.** Open `lib/sim/worker-client.ts`. Add `export type { InteractionGraphReport } from '@/workers/simulation.worker';` alongside the existing type re-exports. No runtime changes. Run `npx tsc --noEmit` to confirm the type flows through. The `Remote<SimulationWorkerApi>` type on the main thread automatically gains the `getInteractionGraph` method because it's a type-level derivation from the worker's interface.
 
-**Slice four — create the pure helper file (if using the split approach).** Create `app/(auth)/playground/network-view-palette.ts` with just the `OKABE_ITO` array and the `communityColor` function and their JSDoc. This file has zero imports — no React, no sigma, no graphology, nothing. It is a pure-data module. The split exists so the unit test (`network-view.test.ts`) can import from it without pulling in sigma/graphology/react/etc. at module-graph-resolution time (see section 5's "Important constraint" note). If the implementing claude verifies at execution time that sigma, graphology, and graphology-layout-forceatlas2 are all side-effect-free at module-import time under the `node` environment (test by creating a scratch `.ts` file that imports all three and runs it under `node --loader tsx`), the split is not strictly necessary and the palette can be inlined into `network-view.tsx`. Either way, `OKABE_ITO` and `communityColor` must be exported from *some* file that the test can import. **Recommendation: use the split. It is cheap insurance.**
+**Slice four — create the pure helper file (if using the split approach).** Create `app/(auth)/playground/network-view-palette.ts` with just the `OKABE_ITO` array and the `communityColor` function and their JSDoc. This file has zero imports — no React, no sigma, no graphology, nothing. It is a pure-data module. The split exists so the unit test (`network-view.test.ts`) can import from it without pulling in sigma/graphology/react/etc. at module-graph-resolution time (see section 5's "Important constraint" note). If the implementing claude verifies at execution time that sigma, graphology, and graphology-layout-forceatlas2 are all side-effect-free at module-import time under the `node` environment (test by creating a scratch `.ts` file that imports all three and runs it under `node --loader tsx`), the split is not strictly necessary and the palette can be inlined into `network-view.tsx`. Either way, `OKABE_ITO` and `communityColor` must be exported from _some_ file that the test can import. **Recommendation: use the split. It is cheap insurance.**
 
 **Slice five — create `network-view.tsx`.** Begin the file with `'use client';` on line 1. Add imports per section 5. If slice four created a palette split file, re-export `OKABE_ITO` and `communityColor` from `network-view.tsx` for convenience (so the test file can import from either location, though it should import from the palette file directly). Implement the component per section 5's detailed description. The body is one `useEffect` with a dependency array `[props.graph, props.communities]`, plus small computed values for the empty-state threshold check. Write the JSX with Tailwind classes matching the playground shell's existing theme. Run `npx tsc --noEmit` to confirm the component compiles. Run `npm run build` to confirm Turbopack bundles it into the `(auth)` route group chunk — the build log should show the network view's chunk alongside the lattice canvas and metrics dashboard chunks without any "invalid import" errors.
 
@@ -422,19 +462,25 @@ All 13 tests run in the default Vitest `node` environment. The suite completes i
 7. **Count the nodes.** `evaluate_script` to read the debug-exposed graphology instance: `window.__msksim_debug_graph.order`. Assert this value is `> 0` (i.e. the graph has at least one node). Also `evaluate_script` to read `window.__msksim_debug_graph.size` — assert `> 0` for edges. If either is zero, the empty-state placeholder is still visible; wait another tick or two and retry (the network view polls every 10 ticks, so 50 ticks guarantees at least 5 polls have occurred and the graph is populated unless the simulation has a zero-success-rate bug).
 
 8. **Verify at least 2 distinct community colors are in use.** `evaluate_script`:
+
    ```js
    const graph = window.__msksim_debug_graph;
    const colors = new Set();
-   graph.forEachNode((id, attrs) => { if (attrs.color) colors.add(attrs.color); });
+   graph.forEachNode((id, attrs) => {
+     if (attrs.color) colors.add(attrs.color);
+   });
    return colors.size;
    ```
+
    Assert the returned value is `>= 2`. The step-23 community-coloring logic writes the `color` attribute onto every node via `graph.setNodeAttribute(id, 'color', communityColor(communityId))`. A single color means Louvain found only one community (or the coloring didn't run); either is a failure mode for this step's acceptance criterion. If 50 ticks is not enough for the cumulative graph to fracture into ≥ 2 communities (possible on very small / very uniform runs), bump the wait to 100 ticks before failing.
 
 9. **Verify zoom via the camera ratio.** Step A: record the initial camera ratio via `evaluate_script`: `return window.__msksim_debug_sigma.getCamera().ratio;`. Call this `ratio0`. Step B: `hover` the sigma container (`mcp__chrome-devtools__hover` on `[data-testid="sigma-container"]`) so subsequent scroll events have focus. Step C: dispatch a wheel event via `evaluate_script`:
+
    ```js
    const el = document.querySelector('[data-testid="sigma-container"]');
    el.dispatchEvent(new WheelEvent('wheel', { deltaY: -200, bubbles: true, cancelable: true }));
    ```
+
    (Negative `deltaY` scrolls "up" which zooms in; positive zooms out. Either direction is fine for the assertion — we just need the ratio to change.) Step D: read the camera ratio again via `evaluate_script`: `return window.__msksim_debug_sigma.getCamera().ratio;`. Call this `ratio1`. Assert `ratio1 !== ratio0`. Sigma v3's default wheel-zoom handler listens for `wheel` events on the container and updates the camera's `ratio` field; a change in the ratio is direct evidence that zoom works. If `ratio1 === ratio0`, either sigma did not bind its wheel handler (possibly because the canvas was not yet mounted at `wait_for` time — retry after a 500 ms delay) or step 23 accidentally configured sigma with `settings.enableZoom: false` (it should not). **Note**: sigma may animate the camera over a short tween (~200-300 ms), so the MCP script should `wait_for` at least 300 ms after dispatching the wheel event before reading the final ratio. Use a short `evaluate_script` with `await new Promise(r => setTimeout(r, 400));` inline, or the MCP harness's wait helper if available.
 
 10. **Screenshot.** `mcp__chrome-devtools__take_screenshot` saving to `docs/screenshots/step-23-network.png`. The screenshot captures the full browser viewport at the moment after the zoom verification, showing the rendered network view with community colors and the (now-zoomed) camera state. Researchers will eyeball this screenshot later to confirm the visual quality.
@@ -446,6 +492,7 @@ All 13 tests run in the default Vitest `node` environment. The suite completes i
 13. **Cleanup and termination.** The MCP script exits. `scripts/run-plan.ts` kills the `next start` server. Any simulation state inside the worker is garbage-collected along with the browser tab.
 
 **Failure modes and their signals:**
+
 - Build error on step 23's new dependencies → slice one bug; re-verify with `npm run build`.
 - `'use client'` missing → slice five bug; sigma's module-scope code throws at SSR time; console-messages will show a hydration error.
 - `getInteractionGraph` not on the API → slice two bug; TypeScript catches it first.

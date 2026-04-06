@@ -1,11 +1,11 @@
-import { z } from "zod";
-import { ExperimentConfig } from "./experiment.js";
+import { z } from 'zod';
+import { ExperimentConfig } from './experiment.js';
 import {
   DEFAULT_REPLICATE_COUNT,
   DEFAULT_BATCH_CONCURRENCY,
   DEFAULT_REPLICATES_PER_CELL,
   DEFAULT_SEED,
-} from "./defaults.js";
+} from './defaults.js';
 
 // Pre-compute full defaults once; Zod 4 does not re-parse .default({}) through the schema.
 const _defaultExperiment = ExperimentConfig.parse({});
@@ -30,7 +30,7 @@ export const SweepConfig = z.object({
       z.object({
         paramPath: z.string().min(1),
         values: z.array(z.unknown()).min(1),
-      })
+      }),
     )
     .min(1),
   replicatesPerCell: z.number().int().positive().default(DEFAULT_REPLICATES_PER_CELL),

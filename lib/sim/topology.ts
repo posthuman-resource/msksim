@@ -5,9 +5,9 @@
 // this breaks F4's "same config runs in all three topologies without code
 // changes" acceptance criterion.
 
-import type { RNG } from "./rng";
+import type { RNG } from './rng';
 
-export type TopologyKind = "lattice" | "well-mixed" | "network";
+export type TopologyKind = 'lattice' | 'well-mixed' | 'network';
 
 export interface Topology {
   /** Discriminator: "lattice" | "well-mixed" | "network" */

@@ -1,12 +1,12 @@
 ---
-step: "09"
-title: "seeded rng and core types"
+step: '09'
+title: 'seeded rng and core types'
 kind: sim-core
 ui: false
 timeout_minutes: 20
 prerequisites:
-  - "step 00: project bootstrap"
-  - "step 01: zod config schema"
+  - 'step 00: project bootstrap'
+  - 'step 01: zod config schema'
 ---
 
 ## 1. Goal
@@ -39,7 +39,7 @@ Local Next.js 16 docs (authoritative per `CLAUDE.md` "Next.js 16 deltas from tra
 
 External references (WebFetched):
 
-- `https://github.com/dubzzz/pure-rand` — confirmed the pure-rand README content. Key findings: (1) the library ships four generators (`congruential32`, `mersenne`, `xorshift128plus`, `xoroshiro128plus`); (2) the author's explicit recommendation is *"Our recommendation is `xoroshiro128plus`"*; (3) the API is **functional and immutable** — "the instance `rng` will never be altered in-place" — consumers receive new RNG instances alongside results; (4) the canonical usage is `const rng = xoroshiro128plus(seed)` followed by distribution calls; (5) a `.jump()` method exists on `RandomGenerator` for skipping `2^64` steps ahead, which we defer and do not expose in v1 (nice-to-have for parallel replicate seeding in step 27 but not load-bearing); (6) MIT licensed. On npm the current stable version is **`pure-rand@8.4.0`** (confirmed via `npm view pure-rand version`, modified 2026-03-27), MIT, **zero runtime dependencies**, ships TypeScript declarations.
+- `https://github.com/dubzzz/pure-rand` — confirmed the pure-rand README content. Key findings: (1) the library ships four generators (`congruential32`, `mersenne`, `xorshift128plus`, `xoroshiro128plus`); (2) the author's explicit recommendation is _"Our recommendation is `xoroshiro128plus`"_; (3) the API is **functional and immutable** — "the instance `rng` will never be altered in-place" — consumers receive new RNG instances alongside results; (4) the canonical usage is `const rng = xoroshiro128plus(seed)` followed by distribution calls; (5) a `.jump()` method exists on `RandomGenerator` for skipping `2^64` steps ahead, which we defer and do not expose in v1 (nice-to-have for parallel replicate seeding in step 27 but not load-bearing); (6) MIT licensed. On npm the current stable version is **`pure-rand@8.4.0`** (confirmed via `npm view pure-rand version`, modified 2026-03-27), MIT, **zero runtime dependencies**, ships TypeScript declarations.
 - `https://en.wikipedia.org/wiki/Xoroshiro128%2B` — confirmed xoroshiro128+ is a 128-bit-state PRNG by David Blackman and Sebastiano Vigna, designed as a fast and statistically strong successor to xorshift. Known caveat: the lowest bits have mildly poor quality; standard practice is to use upper bits for integer work and to use the full 53-bit mantissa path for floats. `pure-rand`'s `uniformInt`/`uniformIntDistribution` does the right thing here — it samples from the high-quality bits via rejection sampling under the hood, so the wrapper in `lib/sim/rng.ts` does not need to compensate. **Not cryptographically secure** — this is fine because simulation RNGs must be reproducible, not unpredictable. Period is `2^128 - 1`, which is several orders of magnitude beyond anything a tick loop could consume even in pessimistic batch sweeps (N = 10^4 agents × 10^4 ticks × 10 random draws per interaction = 10^9 draws per run; the 128-bit period is vastly larger).
 
 Paths not taken:
@@ -119,7 +119,7 @@ Eighth, commit with the exact subject line from section 12.
 18. **`inventoryIncrement` adds to existing weights.** Starting from `{L1: red: 'red' = 1.0}`, increment by `+2.0` and assert the result is `3.0`.
 19. **`inventoryIncrement` floors correctly.** Starting from `{L1: red: 'red' = 1.0}`, call `inventoryIncrement(inv, L1, red, 'red', -5, 0)` and assert the result is `0` (not `-4`).
 20. **`inventoryIncrement` with missing key creates the entry.** Starting from `emptyInventory()`, increment a non-existent `(L1, red, 'red')` by `+1` and assert the result is `1`.
-21. **Brand type compile-time safety.** Add a `// @ts-expect-error` line followed by a direct assignment of a plain string to an `AgentId`-typed variable (`const id: AgentId = 'not-wrapped'`). The `@ts-expect-error` asserts the line *must* fail type-checking; if the brand ever collapses, TypeScript silently succeeds, the `@ts-expect-error` marker itself fails, and the test build breaks — which is exactly the signal we want. Repeat the pattern for `Language`, `Referent`, `TokenLexeme` to avoid silent collapses across all four brands. These are compile-time checks surfaced by Vitest's TypeScript integration; they require no runtime assertions.
+21. **Brand type compile-time safety.** Add a `// @ts-expect-error` line followed by a direct assignment of a plain string to an `AgentId`-typed variable (`const id: AgentId = 'not-wrapped'`). The `@ts-expect-error` asserts the line _must_ fail type-checking; if the brand ever collapses, TypeScript silently succeeds, the `@ts-expect-error` marker itself fails, and the test build breaks — which is exactly the signal we want. Repeat the pattern for `Language`, `Referent`, `TokenLexeme` to avoid silent collapses across all four brands. These are compile-time checks surfaced by Vitest's TypeScript integration; they require no runtime assertions.
 22. **Round-trip serialization.** Build a small inventory, convert to a flat array of `[lang, ref, lex, weight]` records (using a local helper in the test file, not an exported API), then rebuild via `inventorySet` calls and assert deep equality. Confirms the shape is postMessage-friendly, which step 20 will need.
 
 All 22 tests run under Vitest's default `node` environment. None touch `Date.now()`, wall-clock, file system, network, or `Math.random`.
@@ -145,7 +145,7 @@ Append to `CLAUDE.md` "Testing conventions" (hard cap 40 lines — this section 
 
 Do **not** append to "Directory layout" — `lib/sim/` was already declared by the step 00 plan (see the "lib/ — server-side utilities" block listing `lib/sim/` with the annotation "pure simulation core: RNG, types, topologies, engine, metrics (steps 09-17)"). This step fills the first slot; step 10 and onward fill the rest.
 
-Do **not** append to "Known gotchas" in this step. The `Math.random` ban belongs in "Testing conventions" because it is a *determinism invariant*, not a surprising one-off. If a future bug reveals a subtle landmine (e.g. a V8 change in `Map` iteration order bites the inventory helpers), promote it to "Known gotchas" at that time.
+Do **not** append to "Known gotchas" in this step. The `Math.random` ban belongs in "Testing conventions" because it is a _determinism invariant_, not a surprising one-off. If a future bug reveals a subtle landmine (e.g. a V8 change in `Map` iteration order bites the inventory helpers), promote it to "Known gotchas" at that time.
 
 Growth budget: `scripts/run-plan.ts` enforces ≤ 100 lines of CLAUDE.md growth per step; this step's 3-bullet addition is well under.
 

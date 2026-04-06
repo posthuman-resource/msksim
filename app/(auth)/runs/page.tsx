@@ -11,9 +11,7 @@ export default async function RunsPage() {
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm">
       <h1 className="text-xl font-bold text-zinc-900">Runs</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        This view is built in step 26.
-      </p>
+      <p className="mt-2 text-sm text-zinc-600">This view is built in step 26.</p>
     </div>
   );
 }

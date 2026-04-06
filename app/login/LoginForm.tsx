@@ -19,10 +19,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ next }: LoginFormProps) {
-  const [state, formAction, pending] = useActionState<LoginState, FormData>(
-    loginAction,
-    undefined,
-  );
+  const [state, formAction, pending] = useActionState<LoginState, FormData>(loginAction, undefined);
 
   const hasError = !!state?.message;
 
@@ -32,10 +29,7 @@ export default function LoginForm({ next }: LoginFormProps) {
       <input type="hidden" name="next" value={next} />
 
       <div className="flex flex-col gap-1">
-        <label
-          htmlFor="username"
-          className="text-sm font-medium text-zinc-700"
-        >
+        <label htmlFor="username" className="text-sm font-medium text-zinc-700">
           Username
         </label>
         <input
@@ -50,10 +44,7 @@ export default function LoginForm({ next }: LoginFormProps) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label
-          htmlFor="password"
-          className="text-sm font-medium text-zinc-700"
-        >
+        <label htmlFor="password" className="text-sm font-medium text-zinc-700">
           Password
         </label>
         <input

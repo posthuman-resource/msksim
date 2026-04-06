@@ -35,7 +35,7 @@ export async function saveSnapshot({
  */
 export async function loadSnapshots(
   runId: string,
-  opts?: { kind?: SnapshotKind }
+  opts?: { kind?: SnapshotKind },
 ): Promise<Snapshot[]> {
   const conditions = [eq(snapshots.runId, runId)];
   if (opts?.kind !== undefined) {

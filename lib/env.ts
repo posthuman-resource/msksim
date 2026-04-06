@@ -6,7 +6,10 @@ const envSchema = z.object({
   MSKSIM_DB_PATH: z.string().default('./data/msksim.db'),
   MSKSIM_SESSION_SECRET: z
     .string()
-    .min(32, 'MSKSIM_SESSION_SECRET must be at least 32 characters. Generate one with: openssl rand -base64 48'),
+    .min(
+      32,
+      'MSKSIM_SESSION_SECRET must be at least 32 characters. Generate one with: openssl rand -base64 48',
+    ),
 });
 
 const parsed = envSchema.safeParse(process.env);

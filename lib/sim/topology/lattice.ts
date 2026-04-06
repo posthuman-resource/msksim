@@ -1,19 +1,25 @@
-import type { RNG } from "../rng";
-import type { Topology, TopologyKind } from "../topology";
-import type { NeighborhoodType } from "@/lib/schema/topology";
+import type { RNG } from '../rng';
+import type { Topology, TopologyKind } from '../topology';
+import type { NeighborhoodType } from '@/lib/schema/topology';
 
 // Moore neighborhood: 8-cell (3×3 minus center)
 const MOORE_OFFSETS: ReadonlyArray<readonly [number, number]> = [
-  [-1, -1], [0, -1], [1, -1],
-  [-1,  0],          [1,  0],
-  [-1,  1], [0,  1], [1,  1],
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
 ];
 
 // Von Neumann neighborhood: 4-cell (orthogonal only)
 const VON_NEUMANN_OFFSETS: ReadonlyArray<readonly [number, number]> = [
-             [0, -1],
-  [-1,  0],          [1,  0],
-             [0,  1],
+  [0, -1],
+  [-1, 0],
+  [1, 0],
+  [0, 1],
 ];
 
 /**
@@ -30,7 +36,7 @@ const VON_NEUMANN_OFFSETS: ReadonlyArray<readonly [number, number]> = [
  * behind choosing open boundaries as the default.
  */
 export class LatticeTopology implements Topology {
-  readonly kind: TopologyKind = "lattice";
+  readonly kind: TopologyKind = 'lattice';
   readonly size: number;
 
   private readonly _width: number;
@@ -39,25 +45,27 @@ export class LatticeTopology implements Topology {
   private readonly _toroidal: boolean;
   private readonly _offsets: ReadonlyArray<readonly [number, number]>;
 
-  constructor(
-    width: number,
-    height: number,
-    neighborhood: NeighborhoodType,
-    toroidal = false,
-  ) {
+  constructor(width: number, height: number, neighborhood: NeighborhoodType, toroidal = false) {
     this._width = width;
     this._height = height;
     this._neighborhood = neighborhood;
     this._toroidal = toroidal;
     this.size = width * height;
-    this._offsets =
-      neighborhood === "moore" ? MOORE_OFFSETS : VON_NEUMANN_OFFSETS;
+    this._offsets = neighborhood === 'moore' ? MOORE_OFFSETS : VON_NEUMANN_OFFSETS;
   }
 
-  get width(): number { return this._width; }
-  get height(): number { return this._height; }
-  get neighborhood(): NeighborhoodType { return this._neighborhood; }
-  get toroidal(): boolean { return this._toroidal; }
+  get width(): number {
+    return this._width;
+  }
+  get height(): number {
+    return this._height;
+  }
+  get neighborhood(): NeighborhoodType {
+    return this._neighborhood;
+  }
+  get toroidal(): boolean {
+    return this._toroidal;
+  }
 
   indexToXY(index: number): [number, number] {
     return [index % this._width, Math.floor(index / this._width)];
