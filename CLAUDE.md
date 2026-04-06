@@ -169,6 +169,12 @@ Established in step 14:
 
 - Partner-selection strategies under `lib/sim/partner-selector.ts` and `lib/sim/preferential-attachment.ts` are **pure functions of `(speaker, candidates, rng, config, currentTick)`** with no `Math.random`, no wall-clock reads, and deterministic floating-point paths (log-sum-exp-stabilized softmax, lexicographic tiebreakers in `topKTokenVector`). Tests pin a seed and assert bit-identical partner selections across repeated invocations; a failure here usually indicates a missing tiebreaker or a `Set`/`Map` iteration-order dependency.
 
+Established in step 18:
+
+- End-to-end simulation smoke tests live at `scripts/sim-smoke.ts` (CLI, `npx tsx scripts/sim-smoke.ts` or `npm run sim:smoke`) and `lib/sim/sim-smoke.test.ts` (Vitest, 50-tick CI gate). Both share a `runSmoke(config, seed, tickCount)` function so the pipeline logic lives in one place.
+- The CLI runs 200 ticks by default; pass a positional tick count to override (`npm run sim:smoke -- 50`). The CLI asserts (a) bit-identical time series across two same-seed runs (determinism), (b) final assimilation index differs between the default policy and `'always-l1'` (ablation), and (c) plausibility bounds on success rate, Nw, assimilation, and modularity.
+- **Determinism invariant check pattern**: for any new sim module, two calls with the same `(config, seed)` must produce bit-identical outputs. The canonical check is `JSON.stringify(resultA) === JSON.stringify(resultB)` — cheap, readable in Vitest diffs, and equivalent to deep-equal for `structuredClone`-safe shapes (which every sim module returns by design).
+
 ## UI verification harness
 
 Populated in step 07. Hard cap: 60 lines. **Every later UI step's plan file references this section by name.**

@@ -16,6 +16,7 @@
     "pretest": "npx tsx scripts/check-node-version.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "sim:smoke": "tsx scripts/sim-smoke.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
     "users": "tsx --conditions=react-server scripts/users.ts"
