@@ -2,14 +2,18 @@
 
 // app/(auth)/playground/simulation-shell.tsx — Top-level client component for /playground.
 //
-// Owns the simulation Web Worker lifecycle (construct, init, play/pause, reset).
-// Fetches lattice projection data on demand — not on every tick — to avoid
-// saturating the postMessage channel (see CLAUDE.md 'Worker lifecycle').
+// Owns the simulation Web Worker lifecycle (construct, init, play/pause/step/reset).
+// Step 24 adds: seed state, config state, configHashShort state, tickRate state,
+// handleSeedChange, handleConfigUpdate, handleRebootstrap callbacks, and ControlsPanel.
+//
+// Transport controls (play/pause/step/reset) and all per-run state live here.
+// ControlsPanel is stateless aside from slider drafts — it receives props and callbacks.
 //
 // Three effects:
 //   1. Worker construction (empty deps) — construct, init, warm-up, fetch first projection.
 //   2. Projection/world refresh (deps: selectedWorld, projectionKind) — re-fetch when toggled.
-//   3. Play/pause loop (dep: isRunning) — setInterval that steps and refreshes each beat.
+//   3. Play/pause loop (dep: isRunning) — setInterval that steps tickRate times and refreshes.
+//   4. Config-hash recomputation (dep: config) — async SHA-256 via config-hash helper.
 //
 // Cleanup order: cancelled flag → terminate() (releaseProxy then worker.terminate).
 // React 19 strict-mode double-invocation is tolerated: the cancel flag + terminate()
@@ -36,6 +40,8 @@ import { createMetricsHistory, appendTick } from './metrics-history';
 import type { MetricsHistory } from './metrics-history';
 import { MetricsDashboard } from './metrics-dashboard';
 import { NetworkView } from './network-view';
+import { ControlsPanel } from './controls-panel';
+import { computeConfigHashShort } from './config-hash';
 import type { SerializedGraph } from 'graphology-types';
 
 /** Hard-coded default config so the playground renders immediately without DB access. */
@@ -57,12 +63,11 @@ const TICK_INTERVAL_MS = 200;
 
 /**
  * Poll the interaction graph from the worker every N ticks during play mode.
- * Low frequency so ForceAtlas2 layout runs infrequently. Step 24 may expose
- * this as a user-facing slider.
+ * Low frequency so ForceAtlas2 layout runs infrequently.
  */
 const INTERACTION_GRAPH_POLL_INTERVAL = 10;
 
-/** Active view tab. 'metrics' tab is only shown when MetricsDashboard is present. */
+/** Active view tab. */
 type ViewTab = 'lattice' | 'metrics' | 'network';
 
 type WorkerHandle = {
@@ -73,14 +78,39 @@ type WorkerHandle = {
 export function SimulationShell() {
   const workerRef = useRef<WorkerHandle | null>(null);
 
+  // ─── Core run state ───────────────────────────────────────────────────────
   const [isRunning, setIsRunning] = useState(false);
   const [currentTick, setCurrentTick] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  // ─── Step 24: seed, config, hash, tickRate ───────────────────────────────
+  const [seed, setSeed] = useState(DEFAULT_SEED);
+  const [config, setConfig] = useState<ExperimentConfig>(DEFAULT_CONFIG);
+  const [configHashShort, setConfigHashShort] = useState('--------');
+  const [tickRate, setTickRate] = useState<1 | 10 | 100 | 1000>(1);
+
+  // Recompute config hash whenever config changes.
+  useEffect(() => {
+    let cancelled = false;
+    computeConfigHashShort(config)
+      .then((hash) => {
+        if (!cancelled) setConfigHashShort(hash);
+      })
+      .catch(() => {
+        // crypto.subtle unavailable (non-secure context in tests) — show placeholder.
+        if (!cancelled) setConfigHashShort('--------');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [config]);
+
+  // ─── Visualization state ─────────────────────────────────────────────────
   const [selectedWorld, setSelectedWorld] = useState<WorldId>('world1');
   const [projectionKind, setProjectionKind] = useState<ProjectionKind>('class');
   const [cells, setCells] = useState<CellData[]>([]);
   const [hoveredAgent, setHoveredAgent] = useState<HoveredAgentInfo | null>(null);
   const [hoveredPointer, setHoveredPointer] = useState<{ x: number; y: number } | null>(null);
-  const [ready, setReady] = useState(false);
   const [metricsHistory, setMetricsHistory] = useState<MetricsHistory>(() =>
     createMetricsHistory(10_000),
   );
@@ -102,7 +132,17 @@ export function SimulationShell() {
     projectionKindRef.current = projectionKind;
   }, [projectionKind]);
 
-  // ─── Effect 1: worker construction ───────────────────────────────────────────
+  // ─── Helper: full reset of display state ─────────────────────────────────
+  // Called by handleReset, handleSeedChange, and handleRebootstrap.
+  const clearDisplayState = useCallback(() => {
+    setCurrentTick(0);
+    setMetricsHistory(createMetricsHistory(10_000));
+    setInteractionGraph(null);
+    setCells([]);
+    ticksSinceGraphPollRef.current = 0;
+  }, []);
+
+  // ─── Effect 1: worker construction ───────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +176,7 @@ export function SimulationShell() {
     };
   }, []);
 
-  // ─── Effect 2: projection / world refresh ────────────────────────────────────
+  // ─── Effect 2: projection / world refresh ────────────────────────────────
 
   useEffect(() => {
     if (!ready) return;
@@ -158,7 +198,14 @@ export function SimulationShell() {
     };
   }, [selectedWorld, projectionKind, ready]);
 
-  // ─── Effect 3: play / pause loop ─────────────────────────────────────────────
+  // ─── Effect 3: play / pause loop ─────────────────────────────────────────
+  // Uses tickRate to step multiple ticks per interval frame.
+
+  // Keep tickRate in a ref so the interval callback always reads the current value.
+  const tickRateRef = useRef(tickRate);
+  useEffect(() => {
+    tickRateRef.current = tickRate;
+  }, [tickRate]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -168,7 +215,7 @@ export function SimulationShell() {
     const id = setInterval(() => {
       (async () => {
         try {
-          const report = await handle.api.step(1);
+          const report = await handle.api.step(tickRateRef.current);
           setCurrentTick(report.tick + 1);
           setMetricsHistory((h) => appendTick(h, report as TickReport));
           const projection = await handle.api.getLatticeProjection(
@@ -177,8 +224,8 @@ export function SimulationShell() {
           );
           setCells(projection);
 
-          // Low-frequency interaction-graph poll (every INTERACTION_GRAPH_POLL_INTERVAL ticks).
-          ticksSinceGraphPollRef.current += 1;
+          // Low-frequency interaction-graph poll.
+          ticksSinceGraphPollRef.current += tickRateRef.current;
           if (ticksSinceGraphPollRef.current >= INTERACTION_GRAPH_POLL_INTERVAL) {
             ticksSinceGraphPollRef.current = 0;
             const igReport = await handle.api.getInteractionGraph();
@@ -188,7 +235,6 @@ export function SimulationShell() {
             });
           }
         } catch {
-          // Worker terminated mid-interval — stop the loop.
           setIsRunning(false);
         }
       })();
@@ -197,7 +243,124 @@ export function SimulationShell() {
     return () => clearInterval(id);
   }, [isRunning]);
 
-  // ─── Hover callback ───────────────────────────────────────────────────────────
+  // ─── Transport callbacks (step 24) ───────────────────────────────────────
+
+  const handlePlay = useCallback(() => {
+    setIsRunning(true);
+  }, []);
+
+  const handlePause = useCallback(() => {
+    setIsRunning(false);
+  }, []);
+
+  const handleStep = useCallback(() => {
+    const handle = workerRef.current;
+    if (!handle || isRunning) return;
+
+    (async () => {
+      try {
+        const report = await handle.api.step(1);
+        setCurrentTick(report.tick + 1);
+        setMetricsHistory((h) => appendTick(h, report as TickReport));
+        const projection = await handle.api.getLatticeProjection(
+          selectedWorldRef.current,
+          projectionKindRef.current,
+        );
+        setCells(projection);
+      } catch {
+        // Worker unavailable.
+      }
+    })();
+  }, [isRunning]);
+
+  const handleReset = useCallback(() => {
+    const handle = workerRef.current;
+    if (!handle) return;
+    setIsRunning(false);
+
+    (async () => {
+      try {
+        await handle.api.reset();
+        await handle.api.init(config, seed);
+        clearDisplayState();
+        const projection = await handle.api.getLatticeProjection(
+          selectedWorldRef.current,
+          projectionKindRef.current,
+        );
+        setCells(projection);
+      } catch {
+        // Worker unavailable.
+      }
+    })();
+  }, [config, seed, clearDisplayState]);
+
+  // ─── Seed change (step 24) ────────────────────────────────────────────────
+
+  const handleSeedChange = useCallback(
+    (newSeed: number) => {
+      const handle = workerRef.current;
+      if (!handle) return;
+      setIsRunning(false);
+      setSeed(newSeed);
+
+      (async () => {
+        try {
+          await handle.api.reset();
+          await handle.api.init(config, newSeed);
+          clearDisplayState();
+          const projection = await handle.api.getLatticeProjection(
+            selectedWorldRef.current,
+            projectionKindRef.current,
+          );
+          setCells(projection);
+        } catch {
+          // Worker unavailable.
+        }
+      })();
+    },
+    [config, clearDisplayState],
+  );
+
+  // ─── Live config update (step 24) ────────────────────────────────────────
+
+  const handleConfigUpdate = useCallback((partial: Partial<ExperimentConfig>) => {
+    const handle = workerRef.current;
+    if (!handle) return;
+    setConfig((prev) => ({ ...prev, ...partial }));
+    handle.api.updateConfig(partial).catch(() => {
+      // Worker unavailable or not yet initialized — ignore.
+    });
+  }, []);
+
+  // ─── Rebootstrap (step 24) — reset-required params ───────────────────────
+
+  const handleRebootstrap = useCallback(
+    (partial: Partial<ExperimentConfig>) => {
+      const handle = workerRef.current;
+      if (!handle) return;
+      setIsRunning(false);
+      const merged = { ...config, ...partial };
+      setConfig(merged);
+
+      (async () => {
+        try {
+          await handle.api.reset();
+          await handle.api.init(merged, seed);
+          clearDisplayState();
+          const projection = await handle.api.getLatticeProjection(
+            selectedWorldRef.current,
+            projectionKindRef.current,
+          );
+          setCells(projection);
+        } catch {
+          // Worker unavailable.
+        }
+      })();
+    },
+    [config, seed, clearDisplayState],
+  );
+
+  // ─── Hover callback ───────────────────────────────────────────────────────
 
   const onHoverCell = useCallback((position: number | null, clientX: number, clientY: number) => {
     if (position === null) {
@@ -234,7 +397,7 @@ export function SimulationShell() {
     })();
   }, []);
 
-  // ─── Legend items for dominant-token projection ───────────────────────────────
+  // ─── Legend items for dominant-token projection ───────────────────────────
 
   const legendItems = useMemo(() => {
     if (projectionKind !== 'dominant-token') return [];
@@ -246,7 +409,7 @@ export function SimulationShell() {
     return all.map((t) => ({ token: t, color: tokenToColor(t, all) }));
   }, [cells, projectionKind]);
 
-  // ─── Tab styling helper ───────────────────────────────────────────────────────
+  // ─── Tab styling helper ───────────────────────────────────────────────────
 
   const tabClass = (t: ViewTab) =>
     [
@@ -256,23 +419,31 @@ export function SimulationShell() {
         : 'border-transparent text-gray-400 hover:text-gray-200',
     ].join(' ');
 
-  // ─── JSX ──────────────────────────────────────────────────────────────────────
+  // ─── JSX ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      {/* Header row */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Play / Pause */}
-        <button
-          data-testid="play-pause-button"
-          onClick={() => setIsRunning((r) => !r)}
-          disabled={!ready}
-          className="rounded bg-blue-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
-        >
-          {isRunning ? 'Pause' : 'Play'}
-        </button>
+      {/* Controls panel (step 24) */}
+      <ControlsPanel
+        tick={currentTick}
+        isRunning={isRunning}
+        ready={ready}
+        seed={seed}
+        config={config}
+        configHashShort={configHashShort}
+        tickRate={tickRate}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onStep={handleStep}
+        onReset={handleReset}
+        onSeedChange={handleSeedChange}
+        onTickRateChange={setTickRate}
+        onConfigUpdate={handleConfigUpdate}
+        onRebootstrap={handleRebootstrap}
+      />
 
-        {/* World selector */}
+      {/* World selector row */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1" role="group" aria-label="World selector">
           {(['world1', 'world2'] as WorldId[]).map((w) => (
             <button
@@ -292,10 +463,7 @@ export function SimulationShell() {
           ))}
         </div>
 
-        {/* Status readout */}
-        <span data-testid="tick-counter" className="text-sm text-gray-500">
-          Tick: {currentTick} &middot; World: {selectedWorld}
-        </span>
+        <span className="text-sm text-gray-500">World: {selectedWorld}</span>
 
         {!ready && <span className="text-sm text-gray-400 italic">Initialising…</span>}
       </div>

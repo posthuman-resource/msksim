@@ -61,6 +61,9 @@ export const DEFAULT_PA_TEMPERATURE = 1.0;
 // per docs/spec.md §3.3 — bounded FIFO memory per agent for preferential attachment (step 14)
 export const DEFAULT_INTERACTION_MEMORY_SIZE = 50;
 
+// per docs/spec.md §3.3 F10 — probability that an activated agent attempts an interaction (1.0 = always)
+export const DEFAULT_INTERACTION_PROBABILITY = 1.0;
+
 // per docs/spec.md §4.3 F12 — default batch replicate count and concurrency
 export const DEFAULT_REPLICATE_COUNT = 10;
 export const DEFAULT_BATCH_CONCURRENCY = 1;

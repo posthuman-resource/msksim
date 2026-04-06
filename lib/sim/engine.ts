@@ -207,8 +207,14 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
   const selectPartnerFn = createPartnerSelector(config, tickNumber);
 
   const events: InteractionEvent[] = [];
-  const { interactionMemorySize, weightUpdateRule, deltaPositive, deltaNegative, retryLimit } =
-    config;
+  const {
+    interactionMemorySize,
+    weightUpdateRule,
+    deltaPositive,
+    deltaNegative,
+    retryLimit,
+    interactionProbability,
+  } = config;
 
   // Process world1 then world2 (ordering is part of the determinism contract).
   const worlds: [World, WorldId][] = [
@@ -220,6 +226,13 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
     const speakerList = getActivationOrder(world, rng, config.schedulerMode);
 
     for (const speaker of speakerList) {
+      // Skip this speaker's activation based on interaction probability.
+      // interactionProbability=1.0 means all agents attempt interactions every tick;
+      // lower values stochastically gate activations before any partner selection.
+      if (interactionProbability < 1.0 && rng.nextFloat() >= interactionProbability) {
+        continue;
+      }
+
       let retries = 0;
 
       // retryLimit = N means the speaker gets at most N+1 total attempts.

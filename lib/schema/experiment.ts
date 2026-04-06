@@ -18,6 +18,7 @@ import {
   DEFAULT_SEED,
   DEFAULT_SAMPLE_INTERVAL,
   DEFAULT_INTERACTION_MEMORY_SIZE,
+  DEFAULT_INTERACTION_PROBABILITY,
 } from './defaults';
 
 // per docs/spec.md §4.1 F3 — scheduler mode for agent activation order
@@ -46,6 +47,10 @@ export const ExperimentConfig = z.object({
 
   // per docs/spec.md §3.3 — max retries on failure before moving to next agent pair
   retryLimit: z.number().int().nonnegative().default(DEFAULT_RETRY_LIMIT),
+
+  // per docs/spec.md §3.3 F10 — probability [0,1] that an activated agent attempts an interaction
+  // 1.0 = all agents interact every tick; 0.5 = each agent skips ~50% of activations
+  interactionProbability: z.number().min(0).max(1).default(DEFAULT_INTERACTION_PROBABILITY),
 
   // per docs/spec.md §3.5 — how token weights are updated on success
   weightUpdateRule: WeightUpdateRule.default('additive'),

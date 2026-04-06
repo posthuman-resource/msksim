@@ -179,6 +179,22 @@ export interface SimulationWorkerApi {
    * polls getInteractionGraph().
    */
   getInteractionGraph(): Promise<InteractionGraphReport>;
+  /**
+   * Merge a partial ExperimentConfig into the worker's in-memory config.
+   * Added by step 24 for the live-slider controls.
+   *
+   * The partial is validated via ExperimentConfig.partial().parse() before merging.
+   * Only top-level fields are merged shallowly — nested objects (e.g. preferentialAttachment)
+   * must be passed as complete replacements, not just the changed sub-field.
+   *
+   * Live-safe parameters (take effect on the next step() call):
+   *   deltaPositive, deltaNegative, interactionProbability, preferentialAttachment.temperature
+   * Reset-required parameters (require api.reset() + api.init() to apply correctly):
+   *   world1.monolingualBilingualRatio, world2.monolingualBilingualRatio, seed
+   *
+   * Throws if called before init().
+   */
+  updateConfig(partial: Partial<ExperimentConfig>): Promise<void>;
 }
 
 // ─── Module-level mutable state ───────────────────────────────────────────────
@@ -510,6 +526,25 @@ const getInteractionGraph: SimulationWorkerApi['getInteractionGraph'] = async ()
   };
 };
 
+/**
+ * Merge a partial ExperimentConfig into the worker's in-memory config.
+ *
+ * Live-safe fields (take effect on the next step() call without losing history):
+ *   deltaPositive, deltaNegative, interactionProbability, preferentialAttachment
+ * Reset-required fields (caller must reset + reinit to apply correctly):
+ *   world1.monolingualBilingualRatio, world2.monolingualBilingualRatio, seed
+ *
+ * Validates the partial via Zod's .partial() so out-of-range values are rejected
+ * at the worker boundary before they corrupt the engine's running config.
+ */
+const updateConfig: SimulationWorkerApi['updateConfig'] = async (partial) => {
+  const s = assertInitialized('updateConfig');
+  // Validate the partial against the schema. ExperimentConfig.partial() makes every
+  // top-level field optional, matching the Partial<ExperimentConfig> contract exactly.
+  const parsed = ExperimentConfig.partial().parse(partial);
+  s.simState.config = { ...s.simState.config, ...parsed };
+};
+
 // ─── Comlink exposure ─────────────────────────────────────────────────────────
 //
 // No guard needed — this module only runs inside a Worker where self is always defined.
@@ -523,6 +558,7 @@ const api: SimulationWorkerApi = {
   reset,
   getLatticeProjection,
   getInteractionGraph,
+  updateConfig,
 };
 
 Comlink.expose(api);
