@@ -16,11 +16,13 @@ describe('lib/env', () => {
     expect(env.MSKSIM_DB_PATH).toBe('./data/test.db');
   });
 
-  it('throws ZodError when MSKSIM_SESSION_SECRET is missing', async () => {
+  it('throws ZodError when MSKSIM_SESSION_SECRET is missing on first access', async () => {
     vi.stubEnv('MSKSIM_SESSION_SECRET', '');
     vi.resetModules();
 
-    await expect(import('@/lib/env')).rejects.toThrow(/MSKSIM_SESSION_SECRET/);
+    // Import succeeds (lazy validation), but property access triggers the throw.
+    const { env } = await import('@/lib/env');
+    expect(() => env.MSKSIM_SESSION_SECRET).toThrow(/MSKSIM_SESSION_SECRET/);
   });
 
   it('defaults MSKSIM_DB_PATH when unset', async () => {

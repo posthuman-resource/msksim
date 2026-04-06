@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-// Set env vars before any module imports so lib/env.ts parses them at
-// module-load time (it reads process.env eagerly).
+// Set env vars before any module imports so the lazy-init Proxy in lib/env.ts
+// picks them up on first access (triggered by the first db/sqlite method call).
 vi.stubEnv('MSKSIM_DB_PATH', ':memory:');
 vi.stubEnv('MSKSIM_SESSION_SECRET', 'a'.repeat(48));
 

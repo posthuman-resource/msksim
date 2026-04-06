@@ -30,6 +30,9 @@ import type {
   RunResult,
   FullStateSnapshot,
   ExperimentConfigInput,
+  WorldId,
+  ProjectionKind,
+  CellData,
 } from '@/workers/simulation.worker';
 
 // Re-export all public types so consumers import everything from this module
@@ -41,6 +44,9 @@ export type {
   RunResult,
   FullStateSnapshot,
   ExperimentConfigInput,
+  WorldId,
+  ProjectionKind,
+  CellData,
 };
 export type { Remote };
 

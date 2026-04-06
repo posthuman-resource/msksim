@@ -14,6 +14,10 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/dal';
 import { logoutAction } from './actions';
 
+// Prevent static pre-rendering of auth routes during `next build`. The DB and
+// session secret are unavailable on build machines (e.g. Render.com).
+export const dynamic = 'force-dynamic';
+
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   // verifySession() is called inside getCurrentUser(). Both are wrapped in
   // React's cache() so if a child page also calls verifySession(), there is

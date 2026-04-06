@@ -20,7 +20,7 @@
 import * as Comlink from 'comlink';
 
 import { ExperimentConfig } from '@/lib/schema/experiment';
-import type { Language } from '@/lib/schema/primitives';
+import type { AgentClass, Language } from '@/lib/schema/primitives';
 import { bootstrapExperiment } from '@/lib/sim/bootstrap';
 import { tick } from '@/lib/sim/engine';
 import type { SimulationState } from '@/lib/sim/engine';
@@ -38,12 +38,35 @@ import type {
   RunSummary,
 } from '@/lib/sim/metrics/types';
 import type { RNG } from '@/lib/sim/rng';
+import type { WorldId } from '@/lib/sim/world';
 
 // ─── Public API types ─────────────────────────────────────────────────────────
 //
 // These types are the single source of truth for the worker/main-thread contract.
 // The main-thread client (lib/sim/worker-client.ts) imports them via type-only
 // imports so the worker module itself is NOT pulled into the main-thread bundle.
+
+// Re-export WorldId so consumers can import it from the worker-client without
+// reaching into lib/sim/world directly.
+export type { WorldId };
+
+/** Which projection the lattice renderer should display. */
+export type ProjectionKind = 'class' | 'dominant-token' | 'matching-rate';
+
+/**
+ * Per-cell data returned by getLatticeProjection().
+ * Carries only the fields each projection needs — no full inventory serialization.
+ * Color computation is left to the main thread (colors.ts helpers).
+ */
+export interface CellData {
+  agentId: string;
+  class: AgentClass;
+  position: number;
+  /** Populated for 'dominant-token' projection. */
+  topToken?: string;
+  /** Populated for 'matching-rate' projection. Value in [0, 1]. */
+  matchingRate?: number;
+}
 
 export interface TickReport {
   tick: number;
@@ -120,6 +143,12 @@ export interface SimulationWorkerApi {
   getMetrics(): Promise<{ scalar: ScalarMetricsSnapshot; graph: GraphMetricsSnapshot }>;
   getSnapshot(): Promise<FullStateSnapshot>;
   reset(): Promise<void>;
+  /**
+   * Return a per-cell projection for the given world and projection kind.
+   * Only the fields required by the active projection are populated.
+   * Called on demand (not every tick) to avoid saturating the postMessage channel.
+   */
+  getLatticeProjection(worldId: WorldId, kind: ProjectionKind): Promise<CellData[]>;
 }
 
 // ─── Module-level mutable state ───────────────────────────────────────────────
@@ -348,10 +377,90 @@ const reset: SimulationWorkerApi['reset'] = async () => {
   state = null;
 };
 
+/**
+ * Return a per-cell projection for the given world and projection kind.
+ *
+ * Pure read over current state — does not mutate state.rng or advance any tick.
+ * The rng argument to topology.neighbors() is passed by convention even though
+ * the lattice implementation does not consume it for neighbor enumeration.
+ *
+ * Only the fields required by the active projection kind are populated in the
+ * returned CellData objects. Color computation is left to the main thread.
+ */
+const getLatticeProjection: SimulationWorkerApi['getLatticeProjection'] = async (
+  worldId,
+  kind,
+) => {
+  const s = assertInitialized('getLatticeProjection');
+
+  const world = worldId === 'world1' ? s.simState.world1 : s.simState.world2;
+  const firstReferent = world.referents[0];
+
+  /** Find the top-weighted token for firstReferent across all languages. */
+  const topTokenFor = (agent: (typeof world.agents)[number]): string | undefined => {
+    let best: { lex: string; w: number } | null = null;
+    for (const langMap of agent.inventory.values()) {
+      const lexMap = langMap.get(firstReferent);
+      if (!lexMap) continue;
+      for (const [lex, w] of lexMap.entries()) {
+        if (best === null || w > best.w) best = { lex: lex as string, w: w as number };
+      }
+    }
+    return best?.lex;
+  };
+
+  if (kind === 'class') {
+    return world.agents.map((a) => ({
+      agentId: a.id as string,
+      class: a.class,
+      position: a.position,
+    }));
+  }
+
+  if (kind === 'dominant-token') {
+    return world.agents.map((a) => ({
+      agentId: a.id as string,
+      class: a.class,
+      position: a.position,
+      topToken: topTokenFor(a),
+    }));
+  }
+
+  // kind === 'matching-rate'
+  const byPosition = new Map<number, (typeof world.agents)[number]>();
+  for (const a of world.agents) byPosition.set(a.position, a);
+
+  return world.agents.map((a) => {
+    const myTop = topTokenFor(a);
+    let matches = 0;
+    let total = 0;
+    for (const npos of world.topology.neighbors(a.position, s.rng)) {
+      const neighbor = byPosition.get(npos);
+      if (!neighbor) continue;
+      total += 1;
+      if (myTop !== undefined && topTokenFor(neighbor) === myTop) matches += 1;
+    }
+    return {
+      agentId: a.id as string,
+      class: a.class,
+      position: a.position,
+      matchingRate: total === 0 ? 0 : matches / total,
+    };
+  });
+};
+
 // ─── Comlink exposure ─────────────────────────────────────────────────────────
 //
 // No guard needed — this module only runs inside a Worker where self is always defined.
 
-const api: SimulationWorkerApi = { init, step, run, getMetrics, getSnapshot, reset };
+const api: SimulationWorkerApi = {
+  init,
+  step,
+  run,
+  getMetrics,
+  getSnapshot,
+  reset,
+  getLatticeProjection,
+};
 
 Comlink.expose(api);
