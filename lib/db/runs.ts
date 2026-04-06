@@ -1,8 +1,9 @@
 import 'server-only';
 
-import { and, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lte } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
+import { configs } from '@/db/schema/configs';
 import { runs, type Run, type RunClassification, type RunStatus } from '@/db/schema/runs';
 
 /**
@@ -99,4 +100,81 @@ export async function listRuns(opts?: {
 /** Delete a run by id. Cascades to tick_metrics and snapshots via FK. */
 export async function deleteRun(id: string): Promise<void> {
   await db.delete(runs).where(eq(runs.id, id));
+}
+
+/**
+ * List runs joined with their config name, avoiding the N+1 problem.
+ * Used by the runs browser page (step 26).
+ */
+export async function listRunsWithConfig(opts?: {
+  limit?: number;
+  offset?: number;
+  configId?: string;
+  status?: RunStatus;
+  classification?: RunClassification;
+  finishedAfter?: Date;
+  finishedBefore?: Date;
+  orderBy?: 'finishedAt' | 'tickCount';
+}): Promise<Array<Run & { configName: string; configHash: string }>> {
+  const limit = opts?.limit ?? 50;
+  const conditions = [];
+  if (opts?.configId) conditions.push(eq(runs.configId, opts.configId));
+  if (opts?.status) conditions.push(eq(runs.status, opts.status));
+  if (opts?.classification) conditions.push(eq(runs.classification, opts.classification));
+  if (opts?.finishedAfter) conditions.push(gte(runs.finishedAt, opts.finishedAfter));
+  if (opts?.finishedBefore) conditions.push(lte(runs.finishedAt, opts.finishedBefore));
+
+  const orderCol = opts?.orderBy === 'tickCount' ? runs.tickCount : runs.finishedAt;
+
+  let query = db
+    .select({
+      id: runs.id,
+      configId: runs.configId,
+      seed: runs.seed,
+      startedAt: runs.startedAt,
+      finishedAt: runs.finishedAt,
+      status: runs.status,
+      tickCount: runs.tickCount,
+      summaryJson: runs.summaryJson,
+      classification: runs.classification,
+      errorMessage: runs.errorMessage,
+      createdBy: runs.createdBy,
+      configName: configs.name,
+      configHash: configs.contentHash,
+    })
+    .from(runs)
+    .innerJoin(configs, eq(runs.configId, configs.id))
+    .orderBy(desc(orderCol))
+    .$dynamic();
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+
+  return query.limit(limit).offset(opts?.offset ?? 0);
+}
+
+/**
+ * Count runs matching the given filters. Used for pagination in the runs browser.
+ */
+export async function countRuns(opts?: {
+  configId?: string;
+  status?: RunStatus;
+  classification?: RunClassification;
+  finishedAfter?: Date;
+  finishedBefore?: Date;
+}): Promise<number> {
+  const conditions = [];
+  if (opts?.configId) conditions.push(eq(runs.configId, opts.configId));
+  if (opts?.status) conditions.push(eq(runs.status, opts.status));
+  if (opts?.classification) conditions.push(eq(runs.classification, opts.classification));
+  if (opts?.finishedAfter) conditions.push(gte(runs.finishedAt, opts.finishedAfter));
+  if (opts?.finishedBefore) conditions.push(lte(runs.finishedAt, opts.finishedBefore));
+
+  let query = db.select({ value: count() }).from(runs).$dynamic();
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+  const [row] = await query;
+  return row.value;
 }

@@ -20,6 +20,8 @@
 // return function ensures the second invocation starts with a fresh worker.
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import * as Comlink from 'comlink';
+import Link from 'next/link';
 
 import { createSimulationWorker } from '@/lib/sim/worker-client';
 import type {
@@ -29,8 +31,10 @@ import type {
   CellData,
   SimulationWorkerApi,
   TickReport,
+  RunResult,
 } from '@/lib/sim/worker-client';
 import { ExperimentConfig } from '@/lib/schema/experiment';
+import type { ExperimentConfig as ExperimentConfigType } from '@/lib/schema/experiment';
 import { LatticeCanvas } from './lattice-canvas';
 import { ProjectionToggle } from './projection-toggle';
 import { AgentTooltip } from './agent-tooltip';
@@ -42,6 +46,7 @@ import { MetricsDashboard } from './metrics-dashboard';
 import { NetworkView } from './network-view';
 import { ControlsPanel } from './controls-panel';
 import { computeConfigHashShort } from './config-hash';
+import { persistCompletedRun, loadConfigAction } from './actions';
 import type { SerializedGraph } from 'graphology-types';
 
 /** Hard-coded default config so the playground renders immediately without DB access. */
@@ -75,17 +80,38 @@ type WorkerHandle = {
   terminate: () => void;
 };
 
-export function SimulationShell() {
+export function SimulationShell({
+  initialConfigId,
+  initialSeedParam,
+}: {
+  initialConfigId?: string;
+  initialSeedParam?: string;
+}) {
   const workerRef = useRef<WorkerHandle | null>(null);
 
   // ─── Core run state ───────────────────────────────────────────────────────
   const [isRunning, setIsRunning] = useState(false);
+  const [isRunningToCompletion, setIsRunningToCompletion] = useState(false);
   const [currentTick, setCurrentTick] = useState(0);
   const [ready, setReady] = useState(false);
 
+  // ─── Step 26: run persistence state ─────────────────────────────────────
+  const [configId] = useState<string | undefined>(initialConfigId);
+  const [configName, setConfigName] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [savedRunId, setSavedRunId] = useState<string | null>(null);
+
   // ─── Step 24: seed, config, hash, tickRate ───────────────────────────────
-  const [seed, setSeed] = useState(DEFAULT_SEED);
-  const [config, setConfig] = useState<ExperimentConfig>(DEFAULT_CONFIG);
+  const [seed, setSeed] = useState(() => {
+    if (initialSeedParam) {
+      const n = Number(initialSeedParam);
+      if (Number.isFinite(n)) return n;
+    }
+    return DEFAULT_SEED;
+  });
+  const [config, setConfig] = useState<ExperimentConfigType>(DEFAULT_CONFIG);
   const [configHashShort, setConfigHashShort] = useState('--------');
   const [tickRate, setTickRate] = useState<1 | 10 | 100 | 1000>(1);
 
@@ -142,7 +168,7 @@ export function SimulationShell() {
     ticksSinceGraphPollRef.current = 0;
   }, []);
 
-  // ─── Effect 1: worker construction ───────────────────────────────────────
+  // ─── Effect 1: worker construction + optional config load ────────────────
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +177,32 @@ export function SimulationShell() {
 
     (async () => {
       try {
-        await handle.api.init(DEFAULT_CONFIG, DEFAULT_SEED);
+        // If configId is provided, load from DB and init worker with loaded config.
+        let initConfig = DEFAULT_CONFIG;
+        let initSeed = DEFAULT_SEED;
+
+        if (initialConfigId) {
+          const result = await loadConfigAction(initialConfigId);
+          if (cancelled) return;
+          if (result) {
+            const parsed = ExperimentConfig.parse(result.config);
+            initConfig = parsed;
+            setConfig(parsed);
+            setConfigName(result.name);
+            setConfigHashShort(result.configHash.slice(0, 8));
+            if (initialSeedParam) {
+              const n = Number(initialSeedParam);
+              if (Number.isFinite(n)) {
+                initSeed = n;
+                setSeed(n);
+              }
+            } else {
+              initSeed = parsed.seed;
+            }
+          }
+        }
+
+        await handle.api.init(initConfig, initSeed);
         // Warm-up: run 5 ticks so the initial render shows non-trivial state.
         const report = await handle.api.step(5);
         if (cancelled) return;
@@ -293,6 +344,58 @@ export function SimulationShell() {
       }
     })();
   }, [config, seed, clearDisplayState]);
+
+  // ─── Run to completion (step 26) ──────────────────────────────────────────
+
+  const handleRunToCompletion = useCallback(() => {
+    const handle = workerRef.current;
+    if (!handle || isRunning || isRunningToCompletion) return;
+
+    setIsRunningToCompletion(true);
+    setSaveStatus('idle');
+    setSavedRunId(null);
+
+    (async () => {
+      try {
+        const totalTicks = config.tickCount;
+        const result: RunResult = await handle.api.run(
+          totalTicks,
+          Comlink.proxy((report: TickReport) => {
+            setCurrentTick(report.tick + 1);
+            setMetricsHistory((h) => appendTick(h, report));
+          }),
+        );
+
+        setIsRunningToCompletion(false);
+
+        // Fetch final projection
+        const projection = await handle.api.getLatticeProjection(
+          selectedWorldRef.current,
+          projectionKindRef.current,
+        );
+        setCells(projection);
+
+        // Auto-save if we have a configId
+        if (configId) {
+          setSaveStatus('saving');
+          try {
+            const { runId } = await persistCompletedRun({
+              configId,
+              seed,
+              tickCount: totalTicks,
+              result,
+            });
+            setSavedRunId(runId);
+            setSaveStatus('saved');
+          } catch {
+            setSaveStatus('error');
+          }
+        }
+      } catch {
+        setIsRunningToCompletion(false);
+      }
+    })();
+  }, [isRunning, isRunningToCompletion, config, configId, seed]);
 
   // ─── Seed change (step 24) ────────────────────────────────────────────────
 
@@ -441,6 +544,53 @@ export function SimulationShell() {
         onConfigUpdate={handleConfigUpdate}
         onRebootstrap={handleRebootstrap}
       />
+
+      {/* Step 26: Run to completion + config name + save status */}
+      <div className="flex flex-wrap items-center gap-3">
+        {configName && (
+          <span className="text-sm text-zinc-500">
+            Config: <span className="font-medium text-zinc-800">{configName}</span>
+          </span>
+        )}
+
+        <button
+          data-testid="run-to-completion-button"
+          disabled={!ready || isRunning || isRunningToCompletion || !configId}
+          onClick={handleRunToCompletion}
+          className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+        >
+          {isRunningToCompletion ? 'Running...' : 'Run to completion'}
+        </button>
+
+        {!configId && (
+          <span className="text-xs text-zinc-400">
+            Save a config in <Link href="/experiments" className="text-blue-500 hover:underline">Experiments</Link> to enable run persistence
+          </span>
+        )}
+
+        {saveStatus === 'saving' && (
+          <span className="text-sm text-zinc-500">Saving run...</span>
+        )}
+        {saveStatus === 'saved' && savedRunId && (
+          <span data-testid="run-saved-toast" className="text-sm text-green-700">
+            Run saved.{' '}
+            <Link href={`/runs/${savedRunId}`} className="underline hover:text-green-900">
+              View in /runs
+            </Link>
+          </span>
+        )}
+        {saveStatus === 'error' && (
+          <span className="text-sm text-red-600">
+            Save failed.{' '}
+            <button
+              className="underline"
+              onClick={handleRunToCompletion}
+            >
+              Retry
+            </button>
+          </span>
+        )}
+      </div>
 
       {/* World selector row */}
       <div className="flex flex-wrap items-center gap-3">

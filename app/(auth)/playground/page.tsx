@@ -6,8 +6,18 @@ import 'server-only';
 import { verifySession } from '@/lib/auth/dal';
 import { SimulationShell } from './simulation-shell';
 
-export default async function PlaygroundPage() {
+export default async function PlaygroundPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ configId?: string; seed?: string }>;
+}) {
   await verifySession();
+  const params = await searchParams;
 
-  return <SimulationShell />;
+  return (
+    <SimulationShell
+      initialConfigId={params.configId}
+      initialSeedParam={params.seed}
+    />
+  );
 }
