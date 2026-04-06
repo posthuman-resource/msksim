@@ -432,6 +432,79 @@ function buildPrompt(step: Step, baseUrl: string | null): string {
   return lines.join('\n');
 }
 
+// ---------- stream-json parsing ----------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StreamEvent = { type: string; subtype?: string; [k: string]: any };
+
+interface ClaudeRunResult {
+  exitCode: number;
+  timedOut: boolean;
+  interrupted: boolean;
+  resultEvent?: StreamEvent;
+}
+
+function createNdjsonParser(onEvent: (e: StreamEvent) => void) {
+  let buf = '';
+  return {
+    push(chunk: Buffer | string) {
+      buf += typeof chunk === 'string' ? chunk : chunk.toString();
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const l of lines) {
+        if (!l.trim()) continue;
+        try { onEvent(JSON.parse(l)); } catch { /* partial */ }
+      }
+    },
+    flush() {
+      if (!buf.trim()) return;
+      try { onEvent(JSON.parse(buf)); } catch { /* partial */ }
+      buf = '';
+    },
+  };
+}
+
+function trunc(s: string, n: number) {
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+function toolSummary(name: string, input?: Record<string, unknown>) {
+  if (!input) return '';
+  switch (name) {
+    case 'Bash': return trunc((input.command as string) ?? '', 100);
+    case 'Read': case 'Write': case 'Edit': return (input.file_path as string) ?? '';
+    case 'Glob': return (input.pattern as string) ?? '';
+    case 'Grep': return `${(input.pattern as string) ?? ''} ${(input.path as string) ?? ''}`.trim();
+    case 'Agent': return trunc((input.description as string) ?? '', 80);
+    default: return trunc(JSON.stringify(input), 80);
+  }
+}
+
+function fmtEvent(ev: StreamEvent): string | null {
+  if (ev.type === 'system' && ev.subtype === 'init') {
+    return `  [init] model=${ev.model ?? '?'} session=${(ev.session_id as string)?.slice(0, 8) ?? '?'}`;
+  }
+  if (ev.type === 'assistant') {
+    const content = (ev.message as { content?: { type: string; text?: string; name?: string; input?: Record<string, unknown> }[] })?.content;
+    if (!content) return null;
+    const out: string[] = [];
+    for (const b of content) {
+      if (b.type === 'text' && b.text) out.push(`  [text] ${trunc(b.text.replace(/\n/g, ' '), 150)}`);
+      if (b.type === 'tool_use' && b.name) out.push(`  [tool] ${b.name}: ${toolSummary(b.name, b.input)}`);
+    }
+    return out.length ? out.join('\n') : null;
+  }
+  if (ev.type === 'result') {
+    const ok = ev.subtype === 'success' && !ev.is_error;
+    const cost = typeof ev.total_cost_usd === 'number' ? `$${ev.total_cost_usd.toFixed(2)}` : '$?';
+    const dur = typeof ev.duration_ms === 'number' ? `${(ev.duration_ms / 1000).toFixed(1)}s` : '?s';
+    let line = `  [${ok ? 'done' : 'FAIL'}] ${ev.num_turns ?? '?'} turns, ${cost}, ${dur}`;
+    if (ev.is_error && typeof ev.result === 'string') line += ` — ${trunc(ev.result, 120)}`;
+    return line;
+  }
+  return null;
+}
+
 // ---------- claude spawn with logging ----------
 
 async function spawnClaudeWithLog(
@@ -440,10 +513,13 @@ async function spawnClaudeWithLog(
   logPath: string,
   timeoutMs: number,
   dryRun: boolean,
-): Promise<{ exitCode: number; timedOut: boolean; interrupted: boolean }> {
+): Promise<ClaudeRunResult> {
   if (dryRun) {
     process.stdout.write('--- dry run ---\n');
-    process.stdout.write('command: claude -p --dangerously-skip-permissions --effort high\n');
+    process.stdout.write(
+      'command: claude -p --dangerously-skip-permissions --effort high'
+      + ' --output-format stream-json --verbose\n',
+    );
     process.stdout.write('prompt:\n');
     for (const line of prompt.split('\n')) process.stdout.write(`  ${line}\n`);
     process.stdout.write('---\n');
@@ -455,24 +531,39 @@ async function spawnClaudeWithLog(
   logStream.write(`\n===== ${new Date().toISOString()} =====\n`);
   logStream.write(`prompt:\n${prompt}\n---\n`);
 
+  // Prompt piped via stdin (not argv) so that pkill -f won't match prompt text
+  // in the claude process command line.
   const proc = spawn(
     'claude',
-    ['-p', '--dangerously-skip-permissions', '--effort', 'high', prompt],
+    [
+      '-p', '--dangerously-skip-permissions',
+      '--effort', 'high',
+      '--output-format', 'stream-json',
+      '--verbose',
+    ],
     {
       cwd: REPO_ROOT,
       env,
-      stdio: ['inherit', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
     },
   );
+  proc.stdin!.end(prompt);
 
-  const teeStream = (src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): void => {
-    src.on('data', (chunk) => {
-      dst.write(chunk);
-      logStream.write(chunk);
-    });
-  };
-  teeStream(proc.stdout!, process.stdout);
-  teeStream(proc.stderr!, process.stderr);
+  let resultEvent: StreamEvent | undefined;
+  let eventCount = 0;
+  const parser = createNdjsonParser((event) => {
+    eventCount++;
+    logStream.write(JSON.stringify(event) + '\n');
+    if (event.type === 'result') resultEvent = event;
+    const line = fmtEvent(event);
+    if (line) process.stdout.write(line + '\n');
+  });
+
+  proc.stdout!.on('data', (chunk: Buffer) => parser.push(chunk));
+  proc.stderr!.on('data', (chunk: Buffer) => {
+    process.stderr.write(chunk);
+    logStream.write(chunk);
+  });
 
   let timedOut = false;
   let interrupted = false;
@@ -501,7 +592,15 @@ async function spawnClaudeWithLog(
     const exitCode = await new Promise<number>((resolve) => {
       proc.on('exit', (code) => resolve(code ?? 1));
     });
-    return { exitCode, timedOut, interrupted };
+    parser.flush();
+    if (eventCount === 0) {
+      logStream.write('[run-plan] WARNING: zero stream events before exit\n');
+      process.stderr.write(
+        `[run-plan] claude exited (${exitCode}) with zero stream events`
+        + ' — check stderr above or dmesg for OOM\n',
+      );
+    }
+    return { exitCode, timedOut, interrupted, resultEvent };
   } finally {
     clearTimeout(timeoutHandle);
     process.off('SIGINT', sigintHandler);
@@ -726,7 +825,13 @@ async function runStep(step: Step, args: CliArgs): Promise<void> {
       throw new Error(`step ${step.number} timed out after ${step.timeoutMs / 60000} minutes`);
     }
     if (result.exitCode !== 0) {
-      throw new Error(`claude exited non-zero (${result.exitCode}) on step ${step.number}`);
+      let msg = `claude exited non-zero (${result.exitCode}) on step ${step.number}`;
+      if (result.exitCode === 143) msg += ' (SIGTERM — possible OOM or external kill)';
+      if (result.exitCode === 137) msg += ' (SIGKILL — likely OOM killer)';
+      if (result.resultEvent?.is_error && typeof result.resultEvent.result === 'string') {
+        msg += `\n  result: ${result.resultEvent.result.slice(0, 200)}`;
+      }
+      throw new Error(msg);
     }
   } finally {
     if (server) await stopDevServer(server);
