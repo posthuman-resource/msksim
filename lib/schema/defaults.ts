@@ -68,6 +68,22 @@ export const DEFAULT_BATCH_CONCURRENCY = 1;
 // per docs/spec.md §4.3 F13 — default replicates per sweep cell
 export const DEFAULT_REPLICATES_PER_CELL = 10;
 
+// per docs/spec.md §7.1 — stability window for time-to-consensus detection
+export const DEFAULT_CONSENSUS_WINDOW_TICKS = 100;
+
+// per docs/spec.md §7.3 — user-configurable classification thresholds
+export const defaultClassificationThresholds = {
+  assimilationHigh: 0.7, // α: finalAssimilation must exceed this to classify as assimilated
+  segregationLow: 0.3,   // β: finalSegregation must be below this to classify as assimilated
+  assimilationLow: 0.3,  // γ: finalAssimilation must be below this to classify as segregated
+  segregationHigh: 0.7,  // δ: finalSegregation must exceed this to classify as segregated
+} as const;
+
+// per docs/spec.md §7.3 — convergence stability window (user-configurable per experiment)
+export const defaultConvergenceConfig = {
+  consensusWindowTicks: DEFAULT_CONSENSUS_WINDOW_TICKS,
+} as const;
+
 // per docs/spec.md §3.3 — full 4×4 language policy matrix.
 // Pairs not explicitly stated by the PDF get a defensive fallback (always-l1 or always-l2).
 export const defaultLanguagePolicies: LanguagePolicyEntry[] = [

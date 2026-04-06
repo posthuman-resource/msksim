@@ -7,6 +7,8 @@ import {
   defaultLanguagePolicies,
   defaultWorldConfig,
   defaultPreferentialAttachmentConfig,
+  defaultClassificationThresholds,
+  defaultConvergenceConfig,
 } from './defaults.js';
 import {
   DEFAULT_TICK_COUNT,
@@ -65,5 +67,18 @@ export const ExperimentConfig = z.object({
 
   // per docs/spec.md §7.2 — tick interval between full agent-inventory snapshots
   sampleInterval: z.number().int().positive().default(DEFAULT_SAMPLE_INTERVAL),
+
+  // per docs/spec.md §7.3 — user-configurable thresholds for run classification (α/β/γ/δ)
+  classificationThresholds: z.object({
+    assimilationHigh: z.number().min(0).max(1).default(0.7), // α
+    segregationLow: z.number().min(0).max(1).default(0.3),  // β
+    assimilationLow: z.number().min(0).max(1).default(0.3), // γ
+    segregationHigh: z.number().min(0).max(1).default(0.7), // δ
+  }).default(defaultClassificationThresholds),
+
+  // per docs/spec.md §7.1 — stability window for time-to-consensus detection
+  convergence: z.object({
+    consensusWindowTicks: z.number().int().positive().default(100),
+  }).default(defaultConvergenceConfig),
 });
 export type ExperimentConfig = z.infer<typeof ExperimentConfig>;

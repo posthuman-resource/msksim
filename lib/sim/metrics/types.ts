@@ -135,3 +135,44 @@ export type ScalarMetricsSnapshot = {
     readonly successRateByClassPair: SuccessRateByClassPair;
   };
 };
+
+// ─── Run summary types ────────────────────────────────────────────────────────
+
+/**
+ * Convergence status derived from the Nw time series at end of run.
+ * - 'converged'  : Nw stabilized at 1 (true Naming Game consensus)
+ * - 'metastable' : Nw stabilized at > 1 (multiple tokens persist)
+ * - 'diverged'   : token weights blew up (engine instability)
+ * - 'unresolved' : run ended before any stable window was observed
+ * Per docs/spec.md §7.3.
+ */
+export type ConvergenceStatus = 'converged' | 'metastable' | 'diverged' | 'unresolved';
+
+/**
+ * Run-level classification derived from the final assimilation and segregation indices.
+ * - 'assimilated' : immigrants adopted L2 (high assimilation, low segregation)
+ * - 'segregated'  : immigrants maintained L1 community (low assimilation, high segregation)
+ * - 'mixed'       : intermediate outcome
+ * - 'inconclusive': insufficient data (no qualifying W2-Imm↔W2-Native interactions)
+ * Per docs/spec.md §7.3, RQ1.
+ */
+export type RunClassification = 'assimilated' | 'segregated' | 'mixed' | 'inconclusive';
+
+/**
+ * End-of-run summary produced by computeRunSummary in lib/sim/metrics/summary.ts.
+ * JSON-serializable and structuredClone-safe (no Maps, Sets, or class instances).
+ * Persisted to runs.summary_json in step 26; consumed by steps 22, 29.
+ *
+ * meanMetrics/medianMetrics/maxMetrics use dot-separated flat keys over the full
+ * scalar + graph time series (e.g. 'world1.nw', 'graph.assimilation').
+ * NaN per-tick values are skipped in all three aggregations.
+ */
+export interface RunSummary {
+  readonly meanMetrics: Readonly<Record<string, number>>;
+  readonly medianMetrics: Readonly<Record<string, number>>;
+  readonly maxMetrics: Readonly<Record<string, number>>;
+  readonly convergenceStatus: ConvergenceStatus;
+  /** Tick at which Nw first stabilized for ≥ consensusWindowTicks ticks; null if not reached. */
+  readonly timeToConsensus: number | null;
+  readonly classification: RunClassification;
+}
