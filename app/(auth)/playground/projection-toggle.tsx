@@ -33,7 +33,11 @@ const CLASS_ENTRIES: { label: string; color: string }[] = [
   { label: 'W2-Immigrant', color: classToColor('W2-Immigrant') },
 ];
 
-export function ProjectionToggle({ projectionKind, onChange, legendItems = [] }: ProjectionToggleProps) {
+export function ProjectionToggle({
+  projectionKind,
+  onChange,
+  legendItems = [],
+}: ProjectionToggleProps) {
   return (
     <div className="flex flex-col gap-2">
       {/* Projection buttons */}
@@ -57,7 +61,10 @@ export function ProjectionToggle({ projectionKind, onChange, legendItems = [] }:
       </div>
 
       {/* Legend */}
-      <div data-testid="projection-legend" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-700">
+      <div
+        data-testid="projection-legend"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-700"
+      >
         {projectionKind === 'class' &&
           CLASS_ENTRIES.map(({ label, color }) => (
             <span key={label} className="flex items-center gap-1">

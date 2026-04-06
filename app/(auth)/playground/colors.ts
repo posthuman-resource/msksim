@@ -79,7 +79,6 @@ export function rgbLerp(
 export function matchingRateToColor(rate: number): string {
   const t = Math.max(0, Math.min(1, rate));
   const [r, g, b] = rgbLerp(RED_RGB, GREEN_RGB, t);
-  const hex = (v: number): string =>
-    Math.round(v).toString(16).padStart(2, '0');
+  const hex = (v: number): string => Math.round(v).toString(16).padStart(2, '0');
   return `#${hex(r)}${hex(g)}${hex(b)}`;
 }

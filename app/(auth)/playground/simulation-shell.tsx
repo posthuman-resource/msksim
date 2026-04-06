@@ -19,7 +19,13 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as Comlink from 'comlink';
 
 import { createSimulationWorker } from '@/lib/sim/worker-client';
-import type { Remote, WorldId, ProjectionKind, CellData, SimulationWorkerApi } from '@/lib/sim/worker-client';
+import type {
+  Remote,
+  WorldId,
+  ProjectionKind,
+  CellData,
+  SimulationWorkerApi,
+} from '@/lib/sim/worker-client';
 import { ExperimentConfig } from '@/lib/schema/experiment';
 import { LatticeCanvas } from './lattice-canvas';
 import { ProjectionToggle } from './projection-toggle';
@@ -64,8 +70,12 @@ export function SimulationShell() {
   // Keep selectedWorld and projectionKind in refs so async callbacks capture fresh values.
   const selectedWorldRef = useRef(selectedWorld);
   const projectionKindRef = useRef(projectionKind);
-  useEffect(() => { selectedWorldRef.current = selectedWorld; }, [selectedWorld]);
-  useEffect(() => { projectionKindRef.current = projectionKind; }, [projectionKind]);
+  useEffect(() => {
+    selectedWorldRef.current = selectedWorld;
+  }, [selectedWorld]);
+  useEffect(() => {
+    projectionKindRef.current = projectionKind;
+  }, [projectionKind]);
 
   // ─── Effect 1: worker construction ───────────────────────────────────────────
 
@@ -118,7 +128,9 @@ export function SimulationShell() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedWorld, projectionKind, ready]);
 
   // ─── Effect 3: play / pause loop ─────────────────────────────────────────────
@@ -150,45 +162,40 @@ export function SimulationShell() {
 
   // ─── Hover callback ───────────────────────────────────────────────────────────
 
-  const onHoverCell = useCallback(
-    (position: number | null, clientX: number, clientY: number) => {
-      if (position === null) {
-        setHoveredAgent(null);
-        setHoveredPointer(null);
-        return;
-      }
-      setHoveredPointer({ x: clientX, y: clientY });
+  const onHoverCell = useCallback((position: number | null, clientX: number, clientY: number) => {
+    if (position === null) {
+      setHoveredAgent(null);
+      setHoveredPointer(null);
+      return;
+    }
+    setHoveredPointer({ x: clientX, y: clientY });
 
-      const handle = workerRef.current;
-      if (!handle) return;
+    const handle = workerRef.current;
+    if (!handle) return;
 
-      (async () => {
-        try {
-          const snapshot = await handle.api.getSnapshot();
-          const worldData = selectedWorldRef.current === 'world1'
-            ? snapshot.world1
-            : snapshot.world2;
-          const agentData = worldData.find((a) => a.position === position);
-          if (!agentData) return;
+    (async () => {
+      try {
+        const snapshot = await handle.api.getSnapshot();
+        const worldData = selectedWorldRef.current === 'world1' ? snapshot.world1 : snapshot.world2;
+        const agentData = worldData.find((a) => a.position === position);
+        if (!agentData) return;
 
-          const lines: string[] = [];
-          for (const [lang, ref, lex, w] of agentData.inventory) {
-            lines.push(`${lang}.${ref}.${lex} = ${w.toFixed(3)}`);
-          }
-
-          setHoveredAgent({
-            id: agentData.agentId,
-            class: agentData.class,
-            position: agentData.position,
-            inventoryLines: lines,
-          });
-        } catch {
-          // Snapshot failed — tooltip will just stay hidden.
+        const lines: string[] = [];
+        for (const [lang, ref, lex, w] of agentData.inventory) {
+          lines.push(`${lang}.${ref}.${lex} = ${w.toFixed(3)}`);
         }
-      })();
-    },
-    [],
-  );
+
+        setHoveredAgent({
+          id: agentData.agentId,
+          class: agentData.class,
+          position: agentData.position,
+          inventoryLines: lines,
+        });
+      } catch {
+        // Snapshot failed — tooltip will just stay hidden.
+      }
+    })();
+  }, []);
 
   // ─── Legend items for dominant-token projection ───────────────────────────────
 
@@ -243,9 +250,7 @@ export function SimulationShell() {
           Tick: {currentTick} &middot; World: {selectedWorld}
         </span>
 
-        {!ready && (
-          <span className="text-sm text-gray-400 italic">Initialising…</span>
-        )}
+        {!ready && <span className="text-sm text-gray-400 italic">Initialising…</span>}
       </div>
 
       {/* Projection toggle */}

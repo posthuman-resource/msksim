@@ -46,10 +46,7 @@ export function LatticeCanvas({
   const lastHoveredPosition = useRef<number | null>(null);
 
   // O(1) lookup by position for hover hit-testing.
-  const cellsByPosition = useMemo(
-    () => new Map(cells.map((c) => [c.position, c])),
-    [cells],
-  );
+  const cellsByPosition = useMemo(() => new Map(cells.map((c) => [c.position, c])), [cells]);
 
   // All tokens present in the current cell list (for tokenToColor stable ordering).
   const allTokens = useMemo(() => {
@@ -124,12 +121,7 @@ export function LatticeCanvas({
       for (const cell of group) {
         const cx = cell.position % latticeWidth;
         const cy = Math.floor(cell.position / latticeWidth);
-        ctx.fillRect(
-          cx * cellW,
-          cy * cellH,
-          cellW - CELL_GAP,
-          cellH - CELL_GAP,
-        );
+        ctx.fillRect(cx * cellW, cy * cellH, cellW - CELL_GAP, cellH - CELL_GAP);
       }
     }
   }
@@ -226,10 +218,7 @@ export function LatticeCanvas({
   }, [cellsByPosition, latticeWidth, latticeHeight, onHoverCell]);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative aspect-square w-full max-w-[600px]"
-    >
+    <div ref={containerRef} className="relative aspect-square w-full max-w-[600px]">
       <canvas
         ref={canvasRef}
         data-testid={`lattice-canvas-${world}`}

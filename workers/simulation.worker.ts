@@ -387,10 +387,7 @@ const reset: SimulationWorkerApi['reset'] = async () => {
  * Only the fields required by the active projection kind are populated in the
  * returned CellData objects. Color computation is left to the main thread.
  */
-const getLatticeProjection: SimulationWorkerApi['getLatticeProjection'] = async (
-  worldId,
-  kind,
-) => {
+const getLatticeProjection: SimulationWorkerApi['getLatticeProjection'] = async (worldId, kind) => {
   const s = assertInitialized('getLatticeProjection');
 
   const world = worldId === 'world1' ? s.simState.world1 : s.simState.world2;
