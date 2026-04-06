@@ -4,7 +4,7 @@
 //
 // All values are plain JSON-serializable objects — no Zod types here.
 
-import type { LanguagePolicyEntry } from './policy.js';
+import type { LanguagePolicyEntry } from './policy';
 
 // per docs/spec.md §3.4 — default lattice dimensions (20×20 = 400 cells, supports 50 agents with room)
 export const DEFAULT_LATTICE_WIDTH = 20;

@@ -1,15 +1,15 @@
 import { z } from 'zod';
-import { WeightUpdateRule } from './primitives.js';
-import { WorldConfig } from './world.js';
-import { LanguagePolicySet } from './policy.js';
-import { PreferentialAttachmentConfig } from './preferential.js';
+import { WeightUpdateRule } from './primitives';
+import { WorldConfig } from './world';
+import { LanguagePolicySet } from './policy';
+import { PreferentialAttachmentConfig } from './preferential';
 import {
   defaultLanguagePolicies,
   defaultWorldConfig,
   defaultPreferentialAttachmentConfig,
   defaultClassificationThresholds,
   defaultConvergenceConfig,
-} from './defaults.js';
+} from './defaults';
 import {
   DEFAULT_TICK_COUNT,
   DEFAULT_DELTA_POSITIVE,
@@ -18,7 +18,7 @@ import {
   DEFAULT_SEED,
   DEFAULT_SAMPLE_INTERVAL,
   DEFAULT_INTERACTION_MEMORY_SIZE,
-} from './defaults.js';
+} from './defaults';
 
 // per docs/spec.md §4.1 F3 — scheduler mode for agent activation order
 export const SchedulerMode = z.enum(['sequential', 'random', 'priority']);

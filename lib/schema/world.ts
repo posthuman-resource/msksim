@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { AgentClass, Language, Referent, TokenLexeme, Weight } from './primitives.js';
-import { TopologyConfig } from './topology.js';
+import { AgentClass, Language, Referent, TokenLexeme, Weight } from './primitives';
+import { TopologyConfig } from './topology';
 import {
   DEFAULT_AGENT_COUNT,
   DEFAULT_MONO_BI_RATIO,
   DEFAULT_REFERENTS,
   defaultVocabularySeed,
-} from './defaults.js';
+} from './defaults';
 
 // per docs/spec.md §4.1 F2 — one seeded token entry in an agent's inventory
 const VocabularySeedEntry = z.object({

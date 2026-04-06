@@ -16,7 +16,7 @@ import {
   DEFAULT_L1_RED,
   DEFAULT_L2_YELLOW,
   DEFAULT_L2_RED,
-} from './config.js';
+} from './config';
 
 describe('ExperimentConfig', () => {
   it('parse({}) returns a valid config with all fields populated', () => {

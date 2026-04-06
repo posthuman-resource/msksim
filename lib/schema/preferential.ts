@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_WARMUP_TICKS, DEFAULT_PA_TEMPERATURE } from './defaults.js';
+import { DEFAULT_WARMUP_TICKS, DEFAULT_PA_TEMPERATURE } from './defaults';
 
 // per docs/spec.md §4.1 F6 — preferential attachment configuration.
 // After warm-up, partner selection biases toward agents with similar token-weight profiles.

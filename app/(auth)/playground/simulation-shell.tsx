@@ -16,7 +16,6 @@
 // return function ensures the second invocation starts with a fresh worker.
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import * as Comlink from 'comlink';
 
 import { createSimulationWorker } from '@/lib/sim/worker-client';
 import type {
@@ -25,6 +24,7 @@ import type {
   ProjectionKind,
   CellData,
   SimulationWorkerApi,
+  TickReport,
 } from '@/lib/sim/worker-client';
 import { ExperimentConfig } from '@/lib/schema/experiment';
 import { LatticeCanvas } from './lattice-canvas';
@@ -32,6 +32,9 @@ import { ProjectionToggle } from './projection-toggle';
 import { AgentTooltip } from './agent-tooltip';
 import type { HoveredAgentInfo } from './agent-tooltip';
 import { tokenToColor } from './colors';
+import { createMetricsHistory, appendTick } from './metrics-history';
+import type { MetricsHistory } from './metrics-history';
+import { MetricsDashboard } from './metrics-dashboard';
 
 /** Hard-coded default config so the playground renders immediately without DB access. */
 const DEFAULT_CONFIG = ExperimentConfig.parse({});
@@ -66,6 +69,9 @@ export function SimulationShell() {
   const [hoveredAgent, setHoveredAgent] = useState<HoveredAgentInfo | null>(null);
   const [hoveredPointer, setHoveredPointer] = useState<{ x: number; y: number } | null>(null);
   const [ready, setReady] = useState(false);
+  const [metricsHistory, setMetricsHistory] = useState<MetricsHistory>(() =>
+    createMetricsHistory(10_000),
+  );
 
   // Keep selectedWorld and projectionKind in refs so async callbacks capture fresh values.
   const selectedWorldRef = useRef(selectedWorld);
@@ -145,6 +151,7 @@ export function SimulationShell() {
         try {
           const report = await handle.api.step(1);
           setCurrentTick(report.tick + 1);
+          setMetricsHistory((h) => appendTick(h, report as TickReport));
           const projection = await handle.api.getLatticeProjection(
             selectedWorldRef.current,
             projectionKindRef.current,
@@ -260,23 +267,31 @@ export function SimulationShell() {
         legendItems={legendItems}
       />
 
-      {/* Canvas + tooltip wrapper */}
-      <div className="relative">
-        <LatticeCanvas
-          world={selectedWorld}
-          projectionKind={projectionKind}
-          cells={cells}
-          latticeWidth={LATTICE_WIDTH}
-          latticeHeight={LATTICE_HEIGHT}
-          onHoverCell={onHoverCell}
-        />
-        {hoveredAgent && hoveredPointer && (
-          <AgentTooltip
-            agent={hoveredAgent}
-            pointerX={hoveredPointer.x}
-            pointerY={hoveredPointer.y}
+      {/* Canvas + metrics layout: side-by-side on wide screens, stacked on narrow */}
+      <div className="flex flex-col xl:flex-row gap-4">
+        {/* Canvas + tooltip wrapper */}
+        <div className="relative shrink-0">
+          <LatticeCanvas
+            world={selectedWorld}
+            projectionKind={projectionKind}
+            cells={cells}
+            latticeWidth={LATTICE_WIDTH}
+            latticeHeight={LATTICE_HEIGHT}
+            onHoverCell={onHoverCell}
           />
-        )}
+          {hoveredAgent && hoveredPointer && (
+            <AgentTooltip
+              agent={hoveredAgent}
+              pointerX={hoveredPointer.x}
+              pointerY={hoveredPointer.y}
+            />
+          )}
+        </div>
+
+        {/* Metrics dashboard */}
+        <div className="flex-1 min-w-0">
+          <MetricsDashboard history={metricsHistory} />
+        </div>
       </div>
     </div>
   );

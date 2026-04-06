@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentClass } from './primitives.js';
+import { AgentClass } from './primitives';
 
 // per docs/spec.md §3.3 — the four PDF-stated language policy rules, referenced by ID.
 // Implementations live in lib/sim/policies/ (step 12); this schema only validates IDs.
