@@ -35,7 +35,13 @@ import type {
 // Re-export all public types so consumers import everything from this module
 // without reaching into the worker module directly. This file is the one-stop shop
 // for the main-thread API surface.
-export type { SimulationWorkerApi, TickReport, RunResult, FullStateSnapshot, ExperimentConfigInput };
+export type {
+  SimulationWorkerApi,
+  TickReport,
+  RunResult,
+  FullStateSnapshot,
+  ExperimentConfigInput,
+};
 export type { Remote };
 
 /**
@@ -87,10 +93,9 @@ export function createSimulationWorker(): {
   // recognizes it as a bundler directive and emits a separate worker chunk.
   // { type: 'module' } enables static import statements inside the worker file.
   // Reference: CLAUDE.md 'Worker lifecycle', turbopack.md § Magic Comments.
-  const worker = new Worker(
-    new URL('../../workers/simulation.worker.ts', import.meta.url),
-    { type: 'module' },
-  );
+  const worker = new Worker(new URL('../../workers/simulation.worker.ts', import.meta.url), {
+    type: 'module',
+  });
 
   // Wrap with Comlink. api is a Remote<SimulationWorkerApi> — all methods return Promises.
   const api = Comlink.wrap<SimulationWorkerApi>(worker);

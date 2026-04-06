@@ -144,9 +144,7 @@ let state: WorkerState | null = null;
 
 function assertInitialized(method: string): WorkerState {
   if (state === null) {
-    throw new Error(
-      `simulation worker: ${method}() called before init(). Call init() first.`,
-    );
+    throw new Error(`simulation worker: ${method}() called before init(). Call init() first.`);
   }
   return state;
 }
@@ -156,9 +154,7 @@ function assertInitialized(method: string): WorkerState {
  * Flattens nested Map<Language, Map<Referent, Map<TokenLexeme, Weight>>> to
  * [language, referent, lexeme, weight][] without losing any information.
  */
-function serializeAgents(
-  agents: SimulationState['world1']['agents'],
-): FullStateSnapshot['world1'] {
+function serializeAgents(agents: SimulationState['world1']['agents']): FullStateSnapshot['world1'] {
   return agents.map((agent) => {
     const inventory: Array<[string, string, string, number]> = [];
     for (const [lang, refMap] of agent.inventory) {
@@ -226,11 +222,7 @@ const init: SimulationWorkerApi['init'] = async (rawConfig, seed) => {
   // Derive L2 label using the same logic as scripts/sim-smoke.ts and engine.ts.
   // bootstrap's deriveLanguages sorts world.languages alphabetically, so
   // languages[0] = L1 ("L1") and languages[1] = L2 ("L2") in the default config.
-  const l2Label = (
-    world1.languages[1] ??
-    world2.languages[1] ??
-    world1.languages[0]
-  ) as Language;
+  const l2Label = (world1.languages[1] ?? world2.languages[1] ?? world1.languages[0]) as Language;
 
   state = {
     simState: { world1, world2, tickNumber: 0, config },
