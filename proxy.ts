@@ -16,7 +16,6 @@ import { SESSION_COOKIE_NAME } from '@/lib/auth/sessions';
 const PUBLIC_PATHS = [
   '/login',
   '/reports',
-  '/_dev', // TEMPORARY: added in step 19 for the worker-bootstrap smoke page. Step 20 removes this entry along with the /_dev/worker-smoke page.
 ] as const;
 
 function isPublicPath(pathname: string): boolean {

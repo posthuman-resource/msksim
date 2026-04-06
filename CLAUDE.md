@@ -219,6 +219,14 @@ Established in step 19:
 - Turbopack bundles worker code into content-hashed chunk files (e.g. `0x0qxuysu~-5l.js`) loaded by the `turbopack-worker-*.js` bootstrap via `importScripts`. The worker chunk is not named after the source file; look for `turbopack-worker-*.js` in network requests to confirm the worker chunk was fetched.
 - `graphology` (CJS package) imports correctly inside a Turbopack worker bundle — confirmed by step-19 smoke test.
 
+Established in step 20:
+
+- The simulation worker lives at `workers/simulation.worker.ts`. It exposes the typed Comlink API `SimulationWorkerApi` with six methods: `init(config, seed)`, `step(count?)`, `run(totalTicks, onProgress?)`, `getMetrics()`, `getSnapshot()`, `reset()`. Main-thread code imports `createSimulationWorker` from `@/lib/sim/worker-client` inside a `useEffect`; the returned `{ api, terminate }` tuple is the only handle to the worker. `api` is a `Remote<SimulationWorkerApi>` whose methods all return promises.
+- **Determinism invariant**: `run(N, ...)` twice with the same `(config, seed)` produces bit-identical `TickReport[]` and `RunSummary`. The seeded RNG lives inside the worker and never crosses the wire — message ordering cannot influence RNG state. The worker exposes **no** state-mutating calls beyond `init`, `step`, `run`, `reset`.
+- **Callback marshalling**: `onProgress` passed to `api.run(...)` must be wrapped with `Comlink.proxy(callback)` on the main thread. Plain function values throw `DataCloneError` because functions are not structured-cloneable.
+- **Cleanup order**: `terminate()` calls `api[Comlink.releaseProxy]()` **before** `worker.terminate()`. Reversing the order can leave dangling Comlink resolvers if a `run()` promise is in flight.
+- **Structured-clone safety**: `TickReport` and `RunResult` payloads are plain objects with `Record<string, number>` metric maps — no `Map`, no class instances, no functions. `FullStateSnapshot` serializes agent inventories as `[language, referent, lexeme, weight][]` quadruples. `getMetrics()` returns `{ scalar: ScalarMetricsSnapshot; graph: GraphMetricsSnapshot }` (named pair, not intersection — both snapshots have `world1`/`world2` fields with incompatible shapes).
+
 ## Export conventions
 
 Populated in step 30. Hard cap: 20 lines.

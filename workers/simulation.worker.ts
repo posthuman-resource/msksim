@@ -1,0 +1,365 @@
+// workers/simulation.worker.ts — Web Worker entry point for the Naming Game simulation.
+//
+// This file runs inside a browser Worker context only.
+// No window, no document, no next/* imports, no DOM APIs.
+// This is the canonical integration point for the pure simulation core (lib/sim/*).
+//
+// Turbopack-native worker construction:
+//   new Worker(new URL('../../workers/simulation.worker.ts', import.meta.url), { type: 'module' })
+// The new URL(path, import.meta.url) expression is required — Turbopack recognizes it as a
+// bundler directive and emits a separate worker chunk. A string literal would not trigger splitting.
+// Reference: CLAUDE.md 'Worker lifecycle'
+// Reference: node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md § Magic Comments
+// Reference: https://developer.mozilla.org/en-US/docs/Web/API/Worker/Worker
+// Reference: https://github.com/GoogleChromeLabs/comlink
+//
+// No 'use client' directive — worker modules have no React context.
+// No 'import server-only' — workers run in a client-side bundle context.
+// No Math.random() — all entropy flows through the seeded RNG (CLAUDE.md "Testing conventions").
+
+import * as Comlink from 'comlink';
+
+import { ExperimentConfig } from '@/lib/schema/experiment';
+import type { Language } from '@/lib/schema/primitives';
+import { bootstrapExperiment } from '@/lib/sim/bootstrap';
+import { tick } from '@/lib/sim/engine';
+import type { SimulationState } from '@/lib/sim/engine';
+import {
+  createInteractionGraph,
+  updateInteractionGraph,
+} from '@/lib/sim/metrics/interaction-graph';
+import type { UndirectedGraph } from '@/lib/sim/metrics/interaction-graph';
+import { computeGraphMetrics } from '@/lib/sim/metrics/graph';
+import { computeScalarMetrics } from '@/lib/sim/metrics/scalar';
+import { computeRunSummary } from '@/lib/sim/metrics/summary';
+import type {
+  ScalarMetricsSnapshot,
+  GraphMetricsSnapshot,
+  RunSummary,
+} from '@/lib/sim/metrics/types';
+import type { RNG } from '@/lib/sim/rng';
+
+// ─── Public API types ─────────────────────────────────────────────────────────
+//
+// These types are the single source of truth for the worker/main-thread contract.
+// The main-thread client (lib/sim/worker-client.ts) imports them via type-only
+// imports so the worker module itself is NOT pulled into the main-thread bundle.
+
+export interface TickReport {
+  tick: number;
+  scalar: ScalarMetricsSnapshot;
+  graph: GraphMetricsSnapshot;
+}
+
+export interface RunResult {
+  summary: RunSummary;
+  metricsTimeSeries: TickReport[];
+}
+
+/**
+ * Full simulation state snapshot for persistence (step 26) and debugging.
+ *
+ * Agent inventories are serialized as [language, referent, lexeme, weight][]
+ * quadruple arrays instead of the nested Map shape from lib/sim/types.ts.
+ * Reason: the nested Map is not structured-clone-safe with TypeScript branded
+ * string keys — keys lose their brand discriminants across postMessage. The
+ * quadruple-array form survives structured clone without information loss.
+ */
+export interface FullStateSnapshot {
+  tick: number;
+  config: ExperimentConfig;
+  world1: Array<{
+    agentId: string;
+    class: string;
+    position: number;
+    inventory: Array<[string, string, string, number]>;
+  }>;
+  world2: Array<{
+    agentId: string;
+    class: string;
+    position: number;
+    inventory: Array<[string, string, string, number]>;
+  }>;
+  /** Cumulative interaction graph as an edge list: [speakerId, hearerId, weight]. */
+  interactionGraphEdges: Array<[string, string, number]>;
+}
+
+/**
+ * Raw config input — validated inside init(). In v1, identical to ExperimentConfig.
+ * Named separately so step 25's config-editor form can later distinguish raw form
+ * data from a fully-parsed ExperimentConfig without breaking this API surface.
+ */
+export type ExperimentConfigInput = ExperimentConfig;
+
+/**
+ * Typed Comlink RPC surface exposed by the simulation worker.
+ *
+ * All methods return Promises because Comlink wraps synchronous implementations
+ * in promise-returning proxies on the main thread.
+ *
+ * Lifecycle:
+ *   1. init(config, seed) — bootstrap state; must be called before step/run.
+ *   2. step(count?) / run(totalTicks, onProgress?) — advance simulation.
+ *   3. getMetrics() / getSnapshot() — read current state.
+ *   4. reset() — clear state; must call init() again before step/run.
+ *
+ * Callback marshalling:
+ *   onProgress passed to run() must be wrapped with Comlink.proxy(callback) on
+ *   the main thread. Bare functions throw DataCloneError (not structuredClone-safe).
+ */
+export interface SimulationWorkerApi {
+  init(config: ExperimentConfigInput, seed: number): Promise<void>;
+  step(count?: number): Promise<TickReport>;
+  run(totalTicks: number, onProgress?: (report: TickReport) => void): Promise<RunResult>;
+  /**
+   * Return the latest tick's scalar and graph metrics as a named pair.
+   * Named properties avoid the type conflict that would arise from merging
+   * ScalarMetricsSnapshot and GraphMetricsSnapshot (both have world1/world2
+   * with incompatible shapes).
+   */
+  getMetrics(): Promise<{ scalar: ScalarMetricsSnapshot; graph: GraphMetricsSnapshot }>;
+  getSnapshot(): Promise<FullStateSnapshot>;
+  reset(): Promise<void>;
+}
+
+// ─── Module-level mutable state ───────────────────────────────────────────────
+//
+// Set by init(), cleared by reset(). All six API methods close over this object.
+// The RNG lives here and never crosses the wire — message ordering cannot
+// influence RNG state, preserving the determinism invariant.
+
+type WorkerState = {
+  simState: SimulationState;
+  rng: RNG;
+  interactionGraph: UndirectedGraph;
+  /** L2 label derived from world1.languages (sorted alphabetically by bootstrap). */
+  l2Label: Language;
+  scalarTimeSeries: ScalarMetricsSnapshot[];
+  graphTimeSeries: GraphMetricsSnapshot[];
+};
+
+let state: WorkerState | null = null;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function assertInitialized(method: string): WorkerState {
+  if (state === null) {
+    throw new Error(
+      `simulation worker: ${method}() called before init(). Call init() first.`,
+    );
+  }
+  return state;
+}
+
+/**
+ * Serialize one world's agent array to structured-clone-safe quadruple-array form.
+ * Flattens nested Map<Language, Map<Referent, Map<TokenLexeme, Weight>>> to
+ * [language, referent, lexeme, weight][] without losing any information.
+ */
+function serializeAgents(
+  agents: SimulationState['world1']['agents'],
+): FullStateSnapshot['world1'] {
+  return agents.map((agent) => {
+    const inventory: Array<[string, string, string, number]> = [];
+    for (const [lang, refMap] of agent.inventory) {
+      for (const [ref, lexMap] of refMap) {
+        for (const [lex, w] of lexMap) {
+          inventory.push([lang as string, ref as string, lex as string, w as number]);
+        }
+      }
+    }
+    return {
+      agentId: agent.id as string,
+      class: agent.class as string,
+      position: agent.position,
+      inventory,
+    };
+  });
+}
+
+/**
+ * Run one tick and collect the resulting TickReport.
+ * Mutates s.simState, s.interactionGraph, s.scalarTimeSeries, s.graphTimeSeries.
+ */
+function runOneTick(s: WorkerState): TickReport {
+  // Capture tick index before advancing (engine increments tickNumber during tick()).
+  const currentTick = s.simState.tickNumber;
+
+  const tickResult = tick(s.simState, s.rng);
+  updateInteractionGraph(s.interactionGraph, tickResult.interactions);
+
+  const scalar = computeScalarMetrics(
+    tickResult.state.world1,
+    tickResult.state.world2,
+    tickResult.interactions,
+  );
+  const graph = computeGraphMetrics(
+    tickResult.state.world1,
+    tickResult.state.world2,
+    s.interactionGraph,
+    tickResult.interactions,
+    { tick: currentTick, l2Label: s.l2Label, rng: s.rng },
+  );
+
+  const report: TickReport = { tick: currentTick, scalar, graph };
+  s.scalarTimeSeries.push(scalar);
+  s.graphTimeSeries.push(graph);
+  // Advance state reference (engine mutates in place; this reassignment documents the flow).
+  s.simState = tickResult.state;
+
+  return report;
+}
+
+// ─── Implementation ───────────────────────────────────────────────────────────
+
+/**
+ * Bootstrap the simulation from a config and a deterministic seed.
+ * Idempotent: calling init twice with the same seed produces identical state.
+ * Calling init a second time overwrites the first call's state without error.
+ */
+const init: SimulationWorkerApi['init'] = async (rawConfig, seed) => {
+  // Validate config at the worker boundary (defensive; callers may pass plain objects
+  // deserialized from postMessage structured-clone, which loses class instances).
+  const config = ExperimentConfig.parse(rawConfig);
+  const { world1, world2, rng } = bootstrapExperiment(config, seed);
+
+  // Derive L2 label using the same logic as scripts/sim-smoke.ts and engine.ts.
+  // bootstrap's deriveLanguages sorts world.languages alphabetically, so
+  // languages[0] = L1 ("L1") and languages[1] = L2 ("L2") in the default config.
+  const l2Label = (
+    world1.languages[1] ??
+    world2.languages[1] ??
+    world1.languages[0]
+  ) as Language;
+
+  state = {
+    simState: { world1, world2, tickNumber: 0, config },
+    rng,
+    interactionGraph: createInteractionGraph(),
+    l2Label,
+    scalarTimeSeries: [],
+    graphTimeSeries: [],
+  };
+};
+
+/**
+ * Advance the simulation by `count` ticks (default 1).
+ * Returns the TickReport for the last tick executed.
+ * The intermediate reports (if count > 1) are stored in the internal time series.
+ *
+ * Semantics: step(10) runs 10 ticks and returns the 10th tick's report.
+ * Intermediate reports are accessible via run() or a future getTickHistory() method.
+ */
+const step: SimulationWorkerApi['step'] = async (count = 1) => {
+  const s = assertInitialized('step');
+
+  if (count <= 0) {
+    throw new Error('simulation worker: step() count must be > 0');
+  }
+
+  let lastReport: TickReport | undefined;
+  for (let i = 0; i < count; i++) {
+    lastReport = runOneTick(s);
+  }
+
+  return lastReport!;
+};
+
+/**
+ * Run the simulation for totalTicks ticks, optionally calling onProgress each tick.
+ *
+ * onProgress MUST be wrapped with Comlink.proxy(callback) on the main thread —
+ * bare functions throw DataCloneError (not structuredClone-safe).
+ * The worker awaits each onProgress call so a slow main-thread consumer is not
+ * overwhelmed at high tick rates.
+ *
+ * The returned RunResult.summary covers only the ticks produced by THIS call.
+ * Calling run(100) then run(50) produces two independent summaries; the full
+ * concatenated time series remains in the internal state.
+ */
+const run: SimulationWorkerApi['run'] = async (totalTicks, onProgress) => {
+  const s = assertInitialized('run');
+
+  const startIndex = s.scalarTimeSeries.length;
+  const tickReports: TickReport[] = [];
+
+  for (let i = 0; i < totalTicks; i++) {
+    const report = runOneTick(s);
+    tickReports.push(report);
+    if (onProgress !== undefined) {
+      // Await so the main thread processes each tick before the next one fires.
+      await onProgress(report);
+    }
+  }
+
+  const summary = computeRunSummary(
+    s.scalarTimeSeries.slice(startIndex),
+    s.graphTimeSeries.slice(startIndex),
+    s.simState.config,
+  );
+
+  return { summary, metricsTimeSeries: tickReports };
+};
+
+/**
+ * Return the latest tick's scalar and graph metrics merged into one flat object.
+ * Throws if no ticks have been run yet.
+ */
+const getMetrics: SimulationWorkerApi['getMetrics'] = async (): Promise<{
+  scalar: ScalarMetricsSnapshot;
+  graph: GraphMetricsSnapshot;
+}> => {
+  const s = assertInitialized('getMetrics');
+
+  if (s.scalarTimeSeries.length === 0) {
+    throw new Error(
+      'simulation worker: getMetrics() called before any ticks ran. Call step() or run() first.',
+    );
+  }
+
+  const lastScalar = s.scalarTimeSeries[s.scalarTimeSeries.length - 1];
+  const lastGraph = s.graphTimeSeries[s.graphTimeSeries.length - 1];
+
+  return { scalar: lastScalar, graph: lastGraph };
+};
+
+/**
+ * Return a structured-clone-safe snapshot of the full simulation state.
+ * Agent inventories are serialized as [language, referent, lexeme, weight][] quadruples.
+ * Interaction graph edges are serialized as [speakerId, hearerId, weight][] triples.
+ */
+const getSnapshot: SimulationWorkerApi['getSnapshot'] = async () => {
+  const s = assertInitialized('getSnapshot');
+
+  const interactionGraphEdges: Array<[string, string, number]> = s.interactionGraph
+    .edges()
+    .map((edgeKey) => [
+      s.interactionGraph.source(edgeKey),
+      s.interactionGraph.target(edgeKey),
+      (s.interactionGraph.getEdgeAttribute(edgeKey, 'weight') as number) ?? 0,
+    ]);
+
+  return {
+    tick: s.simState.tickNumber,
+    config: s.simState.config,
+    world1: serializeAgents(s.simState.world1.agents),
+    world2: serializeAgents(s.simState.world2.agents),
+    interactionGraphEdges,
+  };
+};
+
+/**
+ * Clear all simulation state. A subsequent init() call is required before
+ * step() or run() — calling those without an intervening init() throws.
+ */
+const reset: SimulationWorkerApi['reset'] = async () => {
+  state = null;
+};
+
+// ─── Comlink exposure ─────────────────────────────────────────────────────────
+//
+// No guard needed — this module only runs inside a Worker where self is always defined.
+
+const api: SimulationWorkerApi = { init, step, run, getMetrics, getSnapshot, reset };
+
+Comlink.expose(api);
