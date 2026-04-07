@@ -55,6 +55,7 @@ function meanOverLanguages(perLanguage: Record<string, { meanTokenWeight: number
 interface ChartConfig {
   id: string;
   title: string;
+  helpKey: string;
   series: Array<{ dataKey: string; name: string; color: string }>;
   shaper: (r: TickReport) => Record<string, number | null>;
   defaultYAxisMode: YAxisMode;
@@ -64,6 +65,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'success-rate',
     title: 'Communication Success Rate',
+    helpKey: 'chart.successRate',
     series: [
       { dataKey: 'world1', name: 'World 1', color: COLORS.skyBlue },
       { dataKey: 'world2', name: 'World 2', color: COLORS.vermillion },
@@ -80,6 +82,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'distinct-tokens',
     title: 'Distinct Active Tokens (Nw)',
+    helpKey: 'chart.distinctTokens',
     series: [
       { dataKey: 'world1', name: 'World 1', color: COLORS.skyBlue },
       { dataKey: 'world2', name: 'World 2', color: COLORS.vermillion },
@@ -94,6 +97,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'mean-weight',
     title: 'Mean Token Weight',
+    helpKey: 'chart.meanWeight',
     series: [
       { dataKey: 'world1', name: 'World 1', color: COLORS.skyBlue },
       { dataKey: 'world2', name: 'World 2', color: COLORS.vermillion },
@@ -108,6 +112,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'largest-cluster',
     title: 'Largest Cluster Size',
+    helpKey: 'chart.largestCluster',
     series: [
       { dataKey: 'world1', name: 'World 1', color: COLORS.skyBlue },
       { dataKey: 'world2', name: 'World 2', color: COLORS.vermillion },
@@ -122,6 +127,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'modularity',
     title: 'Louvain Modularity (cumulative graph)',
+    helpKey: 'chart.modularity',
     series: [{ dataKey: 'combined', name: 'Combined', color: COLORS.bluishGreen }],
     defaultYAxisMode: 'auto',
     shaper: (r) => ({
@@ -132,6 +138,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'assimilation',
     title: 'Assimilation Index (W2)',
+    helpKey: 'chart.assimilation',
     series: [{ dataKey: 'value', name: 'Assimilation', color: COLORS.skyBlue }],
     defaultYAxisMode: 'zeroOne',
     shaper: (r) => ({
@@ -144,6 +151,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'segregation',
     title: 'Segregation Index (W2-Immigrants)',
+    helpKey: 'chart.segregation',
     series: [{ dataKey: 'value', name: 'Segregation', color: COLORS.vermillion }],
     defaultYAxisMode: 'auto',
     shaper: (r) => ({
@@ -215,6 +223,7 @@ export function MetricsDashboard({ history, maxDisplayPoints = 1000 }: MetricsDa
               key={config.id}
               testId={`chart-${config.id}`}
               title={config.title}
+              helpKey={config.helpKey}
               series={config.series}
               data={chartData[config.id]}
               syncId="msksim-dashboard"

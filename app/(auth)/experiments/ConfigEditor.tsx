@@ -11,6 +11,7 @@ import { ExperimentConfig } from '@/lib/schema/experiment';
 import type { ExperimentConfig as ExperimentConfigType } from '@/lib/schema/experiment';
 import { saveConfigAction, deleteConfigAction, duplicateConfigAction } from './actions';
 import type { SaveState } from './actions';
+import { HelpTip } from '../components/help-tip';
 
 // Extend schema to include the name field (sibling column, not in ExperimentConfig)
 const FormSchema = ExperimentConfig.extend({ name: z.string().min(1, 'Name is required') });
@@ -157,6 +158,7 @@ export function ConfigEditor({
       <div>
         <label htmlFor="config-name" className="block text-sm font-medium text-zinc-700">
           Configuration name <span className="text-red-500">*</span>
+          <HelpTip helpKey="config.name" />
         </label>
         <input
           id="config-name"
@@ -195,17 +197,31 @@ export function ConfigEditor({
       {/* Interaction engine */}
       <details className="rounded-lg border border-zinc-200 bg-white">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
-          Interaction engine
+          Interaction engine <HelpTip helpKey="config.tickCount" />
         </summary>
         <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3">
-          <NumberField label="Tick count" path="tickCount" form={form} min={1} step={1} />
-          <NumberField label="Seed (0 is valid)" path="seed" form={form} step={1} />
+          <NumberField
+            label="Tick count"
+            path="tickCount"
+            form={form}
+            min={1}
+            step={1}
+            helpKey="config.tickCount"
+          />
+          <NumberField
+            label="Seed (0 is valid)"
+            path="seed"
+            form={form}
+            step={1}
+            helpKey="config.seed"
+          />
           <NumberField
             label="Δ⁺ success increment"
             path="deltaPositive"
             form={form}
             min={0}
             step={0.01}
+            helpKey="config.deltaPositive"
           />
           <NumberField
             label="Δ⁻ failure penalty (0 = minimal Naming Game)"
@@ -213,8 +229,16 @@ export function ConfigEditor({
             form={form}
             min={0}
             step={0.01}
+            helpKey="config.deltaNegative"
           />
-          <NumberField label="Retry limit" path="retryLimit" form={form} min={0} step={1} />
+          <NumberField
+            label="Retry limit"
+            path="retryLimit"
+            form={form}
+            min={0}
+            step={1}
+            helpKey="config.retryLimit"
+          />
           <NumberField
             label="Interaction probability"
             path="interactionProbability"
@@ -222,6 +246,7 @@ export function ConfigEditor({
             min={0}
             max={1}
             step={0.01}
+            helpKey="config.interactionProbability"
           />
           <NumberField
             label="Snapshot sampling interval"
@@ -229,6 +254,7 @@ export function ConfigEditor({
             form={form}
             min={1}
             step={1}
+            helpKey="config.sampleInterval"
           />
           <NumberField
             label="Interaction memory size"
@@ -236,9 +262,13 @@ export function ConfigEditor({
             form={form}
             min={1}
             step={1}
+            helpKey="config.interactionMemorySize"
           />
           <div>
-            <label className="block text-xs font-medium text-zinc-600">Weight update rule</label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Weight update rule
+              <HelpTip helpKey="config.weightUpdateRule" />
+            </label>
             <select
               {...form.register('weightUpdateRule')}
               className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
@@ -248,7 +278,10 @@ export function ConfigEditor({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600">Scheduler mode</label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Scheduler mode
+              <HelpTip helpKey="config.schedulerMode" />
+            </label>
             <select
               {...form.register('schedulerMode')}
               className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
@@ -264,7 +297,8 @@ export function ConfigEditor({
       {/* Classification thresholds */}
       <details className="rounded-lg border border-zinc-200 bg-white">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
-          Classification thresholds (α / β / γ / δ)
+          Classification thresholds (α / β / γ / δ){' '}
+          <HelpTip helpKey="config.classificationThresholds" />
         </summary>
         <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
           <NumberField
@@ -274,6 +308,7 @@ export function ConfigEditor({
             min={0}
             max={1}
             step={0.01}
+            helpKey="config.classificationThresholds.assimilationHigh"
           />
           <NumberField
             label="β segregation low"
@@ -282,6 +317,7 @@ export function ConfigEditor({
             min={0}
             max={1}
             step={0.01}
+            helpKey="config.classificationThresholds.segregationLow"
           />
           <NumberField
             label="γ assimilation low"
@@ -290,6 +326,7 @@ export function ConfigEditor({
             min={0}
             max={1}
             step={0.01}
+            helpKey="config.classificationThresholds.assimilationLow"
           />
           <NumberField
             label="δ segregation high"
@@ -297,6 +334,7 @@ export function ConfigEditor({
             form={form}
             min={0}
             max={1}
+            helpKey="config.classificationThresholds.segregationHigh"
             step={0.01}
           />
         </div>
@@ -305,7 +343,7 @@ export function ConfigEditor({
       {/* Convergence */}
       <details className="rounded-lg border border-zinc-200 bg-white">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
-          Convergence detection
+          Convergence detection <HelpTip helpKey="config.convergence.consensusWindowTicks" />
         </summary>
         <div className="p-4">
           <NumberField
@@ -314,6 +352,7 @@ export function ConfigEditor({
             form={form}
             min={1}
             step={1}
+            helpKey="config.convergence.consensusWindowTicks"
           />
         </div>
       </details>
@@ -321,7 +360,8 @@ export function ConfigEditor({
       {/* Language policies */}
       <details className="rounded-lg border border-zinc-200 bg-white">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
-          Language policies ({policyFields.length} rules)
+          Language policies ({policyFields.length} rules){' '}
+          <HelpTip helpKey="config.languagePolicies" />
         </summary>
         <div className="overflow-x-auto p-4">
           <table className="w-full text-xs">
@@ -382,7 +422,7 @@ export function ConfigEditor({
       {/* Preferential attachment */}
       <details className="rounded-lg border border-zinc-200 bg-white">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
-          Preferential attachment
+          Preferential attachment <HelpTip helpKey="config.preferentialAttachment.enabled" />
         </summary>
         <div className="space-y-4 p-4">
           <label className="flex items-center gap-2 text-sm text-zinc-700">
@@ -400,6 +440,7 @@ export function ConfigEditor({
               form={form}
               min={0}
               step={1}
+              helpKey="config.preferentialAttachment.warmUpTicks"
             />
             <NumberField
               label="Temperature"
@@ -407,6 +448,7 @@ export function ConfigEditor({
               form={form}
               min={0}
               step={0.01}
+              helpKey="config.preferentialAttachment.temperature"
             />
             <NumberField
               label="Top-K dimensions"
@@ -414,9 +456,13 @@ export function ConfigEditor({
               form={form}
               min={1}
               step={1}
+              helpKey="config.preferentialAttachment.topK"
             />
             <div>
-              <label className="block text-xs font-medium text-zinc-600">Similarity metric</label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Similarity metric
+                <HelpTip helpKey="config.preferentialAttachment.similarityMetric" />
+              </label>
               <select
                 {...form.register('preferentialAttachment.similarityMetric')}
                 className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
@@ -540,7 +586,10 @@ function WorldSection({
       <div className="space-y-4">
         {/* Agent count */}
         <div>
-          <label className="block text-xs font-medium text-zinc-600">Agent count</label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Agent count
+            <HelpTip helpKey="config.world.agentCount" />
+          </label>
           <input
             type="number"
             min={1}
@@ -558,6 +607,7 @@ function WorldSection({
         <div>
           <label className="block text-xs font-medium text-zinc-600">
             Mono:Bi ratio (monolinguals per bilingual, default 1.5 = 3:2)
+            <HelpTip helpKey="config.world.monolingualBilingualRatio" />
           </label>
           <Controller
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -605,7 +655,10 @@ function WorldSection({
 
         {/* Topology */}
         <div>
-          <label className="block text-xs font-medium text-zinc-600">Topology</label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Topology
+            <HelpTip helpKey="config.world.topology" />
+          </label>
           <div className="mt-1 flex gap-4">
             {(['lattice', 'well-mixed', 'network'] as const).map((t) => (
               <label key={t} className="flex items-center gap-1 text-xs text-zinc-700">
@@ -678,6 +731,7 @@ function WorldSection({
         <div>
           <label className="block text-xs font-medium text-zinc-600">
             Referents (comma-separated)
+            <HelpTip helpKey="config.world.referents" />
           </label>
           <input
             type="text"
@@ -694,7 +748,10 @@ function WorldSection({
 
         {/* Vocabulary seed (JSON textarea) */}
         <div>
-          <label className="block text-xs font-medium text-zinc-600">Vocabulary seed (JSON)</label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Vocabulary seed (JSON)
+            <HelpTip helpKey="config.world.vocabularySeed" />
+          </label>
           <p className="mt-0.5 text-xs text-zinc-400">
             AgentClass → Language → Referent → {'[{lexeme, initialWeight}]'}
           </p>
@@ -727,9 +784,10 @@ interface NumberFieldProps {
   min?: number;
   max?: number;
   step?: number;
+  helpKey?: string;
 }
 
-function NumberField({ label, path, form, min, max, step }: NumberFieldProps) {
+function NumberField({ label, path, form, min, max, step, helpKey }: NumberFieldProps) {
   // Traverse the errors tree by dot-path to find the error for this field
   const error = path
     .split('.')
@@ -741,7 +799,10 @@ function NumberField({ label, path, form, min, max, step }: NumberFieldProps) {
 
   return (
     <div>
-      <label className="block text-xs font-medium text-zinc-600">{label}</label>
+      <label className="block text-xs font-medium text-zinc-600">
+        {label}
+        {helpKey && <HelpTip helpKey={helpKey} />}
+      </label>
       <input
         type="number"
         min={min}

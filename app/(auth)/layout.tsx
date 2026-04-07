@@ -59,6 +59,9 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         <Link href="/runs" className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline">
           Runs
         </Link>
+        <Link href="/guide" className="text-sm text-zinc-600 hover:text-zinc-900 hover:underline">
+          Guide
+        </Link>
       </nav>
 
       <main className="flex-1 bg-zinc-50 p-6">{children}</main>

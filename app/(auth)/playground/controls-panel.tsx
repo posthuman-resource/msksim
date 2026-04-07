@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import type { ExperimentConfig } from '@/lib/schema/experiment';
+import { HelpTip } from '../components/help-tip';
 
 const DEBOUNCE_MS = 300;
 
@@ -187,6 +188,7 @@ export function ControlsPanel({
       <div className="flex items-center gap-2">
         <label htmlFor="tick-rate-select" className="text-sm text-gray-200">
           Speed:
+          <HelpTip helpKey="playground.tickRate" variant="dark" />
         </label>
         <select
           id="tick-rate-select"
@@ -208,6 +210,7 @@ export function ControlsPanel({
         <div className="flex items-center gap-2">
           <label htmlFor="seed-input" className="text-sm text-gray-200">
             Seed:
+            <HelpTip helpKey="playground.seed" variant="dark" />
           </label>
           <input
             id="seed-input"
@@ -245,7 +248,10 @@ export function ControlsPanel({
         {/* Δ⁺ (deltaPositive) — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-200">Δ⁺ (weight on success)</label>
+            <label className="text-xs text-gray-200">
+              Δ⁺ (weight on success)
+              <HelpTip helpKey="playground.deltaPositive" variant="dark" />
+            </label>
             <span data-testid="delta-plus-value" className="text-xs font-mono text-gray-300">
               {deltaPlusDraft.toFixed(2)}
             </span>
@@ -264,7 +270,10 @@ export function ControlsPanel({
         {/* Δ⁻ (deltaNegative) — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-200">Δ⁻ (weight on failure)</label>
+            <label className="text-xs text-gray-200">
+              Δ⁻ (weight on failure)
+              <HelpTip helpKey="playground.deltaNegative" variant="dark" />
+            </label>
             <span data-testid="delta-minus-value" className="text-xs font-mono text-gray-300">
               {deltaMinusDraft.toFixed(2)}
             </span>
@@ -283,7 +292,10 @@ export function ControlsPanel({
         {/* Interaction probability — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-200">Interaction probability</label>
+            <label className="text-xs text-gray-200">
+              Interaction probability
+              <HelpTip helpKey="playground.interactionProbability" variant="dark" />
+            </label>
             <span
               data-testid="interaction-probability-value"
               className="text-xs font-mono text-gray-300"
@@ -305,7 +317,10 @@ export function ControlsPanel({
         {/* Pref. attachment temperature — live */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-200">Pref. attachment temp.</label>
+            <label className="text-xs text-gray-200">
+              Pref. attachment temp.
+              <HelpTip helpKey="playground.prefAttachTemp" variant="dark" />
+            </label>
             <span data-testid="prefattach-temp-value" className="text-xs font-mono text-gray-300">
               {prefTempDraft.toFixed(2)}
             </span>
@@ -329,6 +344,7 @@ export function ControlsPanel({
               <span className="text-yellow-500" title="Changing this will reset the run">
                 ↺
               </span>
+              <HelpTip helpKey="playground.monoBiRatio" variant="dark" />
             </label>
             <span data-testid="ratio-value" className="text-xs font-mono text-gray-300">
               {ratioDraft.toFixed(2)}

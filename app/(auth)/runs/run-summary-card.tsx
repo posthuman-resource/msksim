@@ -1,6 +1,7 @@
 import type { RunSummary, ConvergenceStatus } from '@/lib/sim/metrics/types';
 import { formatClassificationLabel } from '@/lib/sim/metrics/serialize';
 import type { RunClassification } from '@/lib/sim/metrics/types';
+import { HelpTip } from '../components/help-tip';
 
 function convergenceLabel(status: ConvergenceStatus): string {
   switch (status) {
@@ -30,7 +31,10 @@ export function RunSummaryCard({
 
       <div className="flex flex-wrap gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-500">Classification:</span>
+          <span className="text-sm text-zinc-500">
+            Classification:
+            <HelpTip helpKey="run.classification" />
+          </span>
           <span
             className="inline-block rounded px-2 py-0.5 text-xs font-semibold text-white"
             style={{ backgroundColor: cls.color }}
@@ -42,13 +46,19 @@ export function RunSummaryCard({
         {summary && (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-zinc-500">Convergence:</span>
+              <span className="text-sm text-zinc-500">
+                Convergence:
+                <HelpTip helpKey="run.convergence" />
+              </span>
               <span className="text-sm font-medium text-zinc-800">
                 {convergenceLabel(summary.convergenceStatus)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-zinc-500">Time to consensus:</span>
+              <span className="text-sm text-zinc-500">
+                Time to consensus:
+                <HelpTip helpKey="run.timeToConsensus" />
+              </span>
               <span className="text-sm font-medium text-zinc-800">
                 {summary.timeToConsensus !== null
                   ? `Tick ${summary.timeToConsensus}`

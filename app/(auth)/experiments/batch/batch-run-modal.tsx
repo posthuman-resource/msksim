@@ -7,6 +7,7 @@ import { createWorkerPool } from './worker-pool';
 import type { BatchState, ReplicateState } from './worker-pool';
 import type { ExperimentConfig } from '@/lib/schema/experiment';
 import { persistCompletedRun, persistFailedReplicate } from './actions';
+import { HelpTip } from '../../components/help-tip';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -209,7 +210,10 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Replicates</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Replicates
+                  <HelpTip helpKey="batch.replicates" />
+                </label>
                 <input
                   data-testid="batch-replicate-count"
                   type="number"
@@ -224,7 +228,10 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Base seed</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Base seed
+                  <HelpTip helpKey="batch.baseSeed" />
+                </label>
                 <input
                   data-testid="batch-base-seed"
                   type="number"
@@ -237,6 +244,7 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-1">
                   Concurrency ({concurrency}/{maxConcurrency})
+                  <HelpTip helpKey="batch.concurrency" />
                 </label>
                 <input
                   data-testid="batch-concurrency"
@@ -250,7 +258,10 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Total ticks</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Total ticks
+                  <HelpTip helpKey="batch.totalTicks" />
+                </label>
                 <input
                   data-testid="batch-total-ticks"
                   type="number"

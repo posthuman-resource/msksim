@@ -24,6 +24,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import { HelpTip } from '../components/help-tip';
+
 export interface SeriesConfig {
   dataKey: string;
   name: string;
@@ -44,6 +46,7 @@ export interface ChartPanelProps {
   onPinToggle: () => void;
   syncId?: string;
   testId?: string;
+  helpKey?: string;
 }
 
 function yAxisDomain(
@@ -156,6 +159,7 @@ export function ChartPanel({
   onPinToggle,
   syncId,
   testId,
+  helpKey,
 }: ChartPanelProps) {
   const [yAxisPopoverOpen, setYAxisPopoverOpen] = useState(false);
 
@@ -170,7 +174,10 @@ export function ChartPanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-800 pb-1 mb-1">
-        <h3 className="text-sm font-medium text-gray-200 truncate">{title}</h3>
+        <h3 className="text-sm font-medium text-gray-200 truncate">
+          {title}
+          {helpKey && <HelpTip helpKey={helpKey} variant="dark" />}
+        </h3>
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"

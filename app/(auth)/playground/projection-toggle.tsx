@@ -7,6 +7,7 @@
 
 import type { ProjectionKind } from '@/lib/sim/worker-client';
 import { classToColor } from './colors';
+import { HelpTip } from '../components/help-tip';
 
 export interface LegendItem {
   token: string;
@@ -20,10 +21,25 @@ interface ProjectionToggleProps {
   legendItems?: LegendItem[];
 }
 
-const KINDS: { kind: ProjectionKind; label: string; testId: string }[] = [
-  { kind: 'class', label: 'Class', testId: 'projection-button-class' },
-  { kind: 'dominant-token', label: 'Dominant Token', testId: 'projection-button-dominant-token' },
-  { kind: 'matching-rate', label: 'Matching Rate', testId: 'projection-button-matching-rate' },
+const KINDS: { kind: ProjectionKind; label: string; testId: string; helpKey: string }[] = [
+  {
+    kind: 'class',
+    label: 'Class',
+    testId: 'projection-button-class',
+    helpKey: 'playground.projection.class',
+  },
+  {
+    kind: 'dominant-token',
+    label: 'Dominant Token',
+    testId: 'projection-button-dominant-token',
+    helpKey: 'playground.projection.dominantToken',
+  },
+  {
+    kind: 'matching-rate',
+    label: 'Matching Rate',
+    testId: 'projection-button-matching-rate',
+    helpKey: 'playground.projection.matchingRate',
+  },
 ];
 
 const CLASS_ENTRIES: { label: string; color: string }[] = [
@@ -42,7 +58,7 @@ export function ProjectionToggle({
     <div className="flex flex-col gap-2">
       {/* Projection buttons */}
       <div className="flex gap-1" role="group" aria-label="Projection kind">
-        {KINDS.map(({ kind, label, testId }) => (
+        {KINDS.map(({ kind, label, testId, helpKey }) => (
           <button
             key={kind}
             data-testid={testId}
@@ -56,6 +72,7 @@ export function ProjectionToggle({
             ].join(' ')}
           >
             {label}
+            <HelpTip helpKey={helpKey} variant="dark" />
           </button>
         ))}
       </div>

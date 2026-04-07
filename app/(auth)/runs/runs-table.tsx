@@ -7,6 +7,7 @@ import { useTransition } from 'react';
 import { deleteRunAction } from './actions';
 import { formatClassificationLabel } from '@/lib/sim/metrics/serialize';
 import type { RunClassification } from '@/db/schema/runs';
+import { HelpTip } from '../components/help-tip';
 
 export interface RunRow {
   id: string;
@@ -141,9 +142,15 @@ export function RunsTable({ rows, configs, activeSort, pagination }: RunsTablePr
               <th className="px-3 py-2 font-medium">Config</th>
               <th className="px-3 py-2 font-medium">Seed</th>
               <th className="px-3 py-2 font-medium">Ticks</th>
-              <th className="px-3 py-2 font-medium">Classification</th>
+              <th className="px-3 py-2 font-medium">
+                Classification
+                <HelpTip helpKey="runs.classification" />
+              </th>
               <th className="px-3 py-2 font-medium">Finished</th>
-              <th className="px-3 py-2 font-medium">Duration</th>
+              <th className="px-3 py-2 font-medium">
+                Duration
+                <HelpTip helpKey="runs.duration" />
+              </th>
               <th className="px-3 py-2 font-medium">Actions</th>
             </tr>
           </thead>

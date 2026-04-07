@@ -20,6 +20,7 @@ import forceAtlas2 from 'graphology-layout-forceatlas2';
 
 import { communityColor } from './network-view-palette';
 export { OKABE_ITO, communityColor } from './network-view-palette';
+import { HelpTip } from '../components/help-tip';
 
 // ─── Thresholds ───────────────────────────────────────────────────────────────
 
@@ -145,6 +146,9 @@ export function NetworkView({ graph, communities, minNodes, minEdges }: NetworkV
 
   return (
     <div className="relative w-full h-[600px] bg-slate-900 rounded">
+      <div className="absolute top-2 right-2 z-20">
+        <HelpTip helpKey="playground.networkView" variant="dark" />
+      </div>
       {isEmpty && (
         <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm z-10">
           Waiting for interactions… ({nodeCount} nodes, {edgeCount} edges)
