@@ -63,9 +63,6 @@ const LATTICE_HEIGHT = (() => {
   return t.type === 'lattice' ? t.height : 10;
 })();
 
-/** Interval between play-mode ticks (ms). Fast enough for visible progress, not overwhelming. */
-const TICK_INTERVAL_MS = 200;
-
 /**
  * Poll the interaction graph from the worker every N ticks during play mode.
  * Low frequency so ForceAtlas2 layout runs infrequently.
@@ -261,35 +258,48 @@ export function SimulationShell({
     const handle = workerRef.current;
     if (!handle) return;
 
-    const id = setInterval(() => {
-      (async () => {
-        try {
-          const report = await handle.api.step(tickRateRef.current);
-          setCurrentTick(report.tick + 1);
-          setMetricsHistory((h) => appendTick(h, report as TickReport));
-          const projection = await handle.api.getLatticeProjection(
-            selectedWorldRef.current,
-            projectionKindRef.current,
-          );
-          setCells(projection);
+    let cancelled = false;
 
-          // Low-frequency interaction-graph poll.
-          ticksSinceGraphPollRef.current += tickRateRef.current;
-          if (ticksSinceGraphPollRef.current >= INTERACTION_GRAPH_POLL_INTERVAL) {
-            ticksSinceGraphPollRef.current = 0;
-            const igReport = await handle.api.getInteractionGraph();
-            setInteractionGraph({
-              graph: igReport.graph,
-              communities: new Map(igReport.communities),
-            });
-          }
-        } catch {
-          setIsRunning(false);
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const report = await handle.api.step(tickRateRef.current);
+        if (cancelled) return;
+        setCurrentTick(report.tick + 1);
+        setMetricsHistory((h) => appendTick(h, report as TickReport));
+        const projection = await handle.api.getLatticeProjection(
+          selectedWorldRef.current,
+          projectionKindRef.current,
+        );
+        if (cancelled) return;
+        setCells(projection);
+
+        // Low-frequency interaction-graph poll.
+        ticksSinceGraphPollRef.current += tickRateRef.current;
+        if (ticksSinceGraphPollRef.current >= INTERACTION_GRAPH_POLL_INTERVAL) {
+          ticksSinceGraphPollRef.current = 0;
+          const igReport = await handle.api.getInteractionGraph();
+          if (cancelled) return;
+          setInteractionGraph({
+            graph: igReport.graph,
+            communities: new Map(igReport.communities),
+          });
         }
-      })();
-    }, TICK_INTERVAL_MS);
+      } catch {
+        setIsRunning(false);
+        return;
+      }
+      // Schedule next iteration only after this one completes — no pile-up.
+      if (!cancelled) {
+        requestAnimationFrame(() => void tick());
+      }
+    };
 
-    return () => clearInterval(id);
+    requestAnimationFrame(() => void tick());
+
+    return () => {
+      cancelled = true;
+    };
   }, [isRunning]);
 
   // ─── Transport callbacks (step 24) ───────────────────────────────────────
