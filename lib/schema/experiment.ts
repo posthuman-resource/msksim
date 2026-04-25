@@ -4,6 +4,7 @@ import { WorldConfig } from './world';
 import { LanguagePolicySet } from './policy';
 import { PreferentialAttachmentConfig } from './preferential';
 import { SuccessPolicyConfig, defaultSuccessPolicyConfig } from './success';
+import { MovementConfig, defaultMovementConfig } from './movement';
 import {
   defaultLanguagePolicies,
   defaultWorldConfig,
@@ -68,6 +69,11 @@ export const ExperimentConfig = z.object({
   // per docs/plan/33-gaussian-success-policy.md — opt-in probabilistic success policy.
   // Default 'deterministic' is bit-identical to v1 and consumes zero new RNG draws.
   successPolicy: SuccessPolicyConfig.default(defaultSuccessPolicyConfig),
+
+  // per docs/plan/34-linguistic-migration.md — opt-in linguistic-similarity-driven
+  // movement on lattice topologies. Default `enabled: false` is bit-identical to
+  // pre-step-34 runs and consumes zero new RNG draws.
+  movement: MovementConfig.default(defaultMovementConfig),
 
   // per docs/spec.md §4.1 F10 — RNG seed; 0 is explicitly supported
   seed: z.number().int().default(DEFAULT_SEED),

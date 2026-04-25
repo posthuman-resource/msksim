@@ -72,6 +72,12 @@ export type PerWorldScalarMetrics = {
    * NaN when fewer than 2 agents in the world.
    */
   readonly matchingRate: number;
+  /**
+   * Average cosine similarity between an agent and its lattice neighbors over
+   * top-K token-weight vectors (step 34). NaN for non-spatial topologies
+   * (well-mixed, network) and for size-1 lattices with no neighbor pairs.
+   */
+  readonly spatialHomophily: number;
   /** Per-language breakdown of mean/variance, keyed by language label. */
   readonly perLanguage: Record<Language, PerLanguageScalarMetrics>;
 };

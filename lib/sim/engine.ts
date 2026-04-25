@@ -30,6 +30,7 @@ import { createPolicy } from './policy/registry';
 import { updateWeight } from './engine/weight-update';
 import { createPartnerSelector } from './partner-selector';
 import { euclideanDistanceSq, topKTokenVector } from './similarity';
+import { applyMovement } from './movement';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -197,6 +198,11 @@ function getActivationOrder(
  *            (the v1 default) consumes zero new draws, preserving bit-identical
  *            determinism with all pre-step-33 runs and config-hashes.
  *        (retry loop repeats b–e' up to retryLimit times on failure)
+ *        g.  Movement (step 34): zero RNG draws (deterministic tiebreaks).
+ *            Fires only after a successful interaction and only when
+ *            config.movement.enabled === true AND world.topology.spatial is
+ *            populated. With movement.enabled=false (the v1 default), this
+ *            sub-step is a no-op and pre-step-34 runs remain bit-identical.
  */
 export function tick(state: SimulationState, rng: RNG): TickResult {
   const { world1, world2, tickNumber, config } = state;
@@ -408,6 +414,10 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
         mutateMemory(hearer, hearerRecord, interactionMemorySize);
 
         if (success) {
+          // ── (g) Movement (step 34) ─────────────────────────────────────
+          // No-op when config.movement.enabled === false or the topology lacks
+          // the `spatial` capability (well-mixed, network). Consumes no RNG.
+          applyMovement({ speaker, hearer, world, config: config.movement });
           // Successful interaction: this speaker's activation is done.
           break;
         } else {
@@ -451,4 +461,17 @@ function mutateMemory(agent: AgentState, record: InteractionRecord, maxSize: num
     ...trimmed,
     record,
   ];
+}
+
+/**
+ * Assign a new position to an AgentState in place. Step 34 extends the
+ * "readonly-by-type, mutable-by-discipline" pattern to AgentState.position so
+ * that lib/sim/movement.ts can update positions without a public mutable API.
+ *
+ * Exported (rather than module-private) so applyMovement in lib/sim/movement.ts
+ * can call it without re-implementing the cast. Not part of the lib/sim/index
+ * public barrel — internal to the engine/movement boundary.
+ */
+export function mutatePosition(agent: AgentState, newPosition: number): void {
+  (agent as { position: number }).position = newPosition;
 }

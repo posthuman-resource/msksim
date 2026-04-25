@@ -36,4 +36,32 @@ export interface Topology {
    * with source < target. Used by step-16 graph-metrics code.
    */
   adjacency?(): Iterable<[number, number]>;
+
+  /**
+   * Optional spatial capability. Implementations that have a metric notion of
+   * position (e.g. lattice) populate this; well-mixed and network leave it
+   * undefined. Step 34's movement code gates on `spatial !== undefined` rather
+   * than branching on `kind`, preserving the topology-agnostic-engine invariant.
+   */
+  readonly spatial?: SpatialOps;
+}
+
+/**
+ * Per-topology spatial operations used by step 34's linguistic migration.
+ *
+ *   - distance:      Manhattan/lattice distance between two cells.
+ *   - stepToward:    one in-bounds neighbor of `from` that decreases distance to
+ *                    `target`; null if no improving move exists.
+ *   - stepAwayFrom:  one in-bounds neighbor of `from` that increases distance to
+ *                    `target`; null when every in-bounds neighbor is closer to
+ *                    or equidistant to `target` (e.g. corner cells).
+ *
+ * All three are pure and consume no RNG. Tiebreaking is deterministic and
+ * documented per implementation; movement.ts depends on this for bit-identical
+ * behavior across runs.
+ */
+export interface SpatialOps {
+  distance(a: number, b: number): number;
+  stepToward(from: number, target: number): number | null;
+  stepAwayFrom(from: number, target: number): number | null;
 }

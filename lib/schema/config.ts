@@ -53,6 +53,12 @@ export type { VocabularySeed as VocabularySeedType, WorldConfig as WorldConfigTy
 export { PreferentialAttachmentConfig } from './preferential';
 export type { PreferentialAttachmentConfig as PreferentialAttachmentConfigType } from './preferential';
 
+export { CollisionPolicy, MovementConfig, defaultMovementConfig } from './movement';
+export type {
+  CollisionPolicy as CollisionPolicyType,
+  MovementConfig as MovementConfigType,
+} from './movement';
+
 export { SchedulerMode, ExperimentConfig } from './experiment';
 export type {
   SchedulerMode as SchedulerModeType,

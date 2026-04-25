@@ -16,9 +16,11 @@ import {
   computeMatchingRate,
   computeMeanTokenWeight,
   computeScalarMetrics,
+  computeSpatialHomophily,
   computeSuccessRateByClassPair,
   computeTokenWeightVariance,
 } from './scalar';
+import { LatticeTopology } from '@/lib/sim/topology/lattice';
 
 // ─── Branded-type constants ───────────────────────────────────────────────────
 
@@ -334,6 +336,43 @@ describe('computeMatchingRate', () => {
   });
 });
 
+describe('computeSpatialHomophily (step 34)', () => {
+  // Test 13 — NaN for non-spatial topology.
+  it('returns NaN for well-mixed topology (no spatial capability)', () => {
+    const inv = makeInv([[L1, yellowRef, yellowLex, 1.0]]);
+    const agents = [makeAgent('a1', 'W1-Mono', inv, 0), makeAgent('a2', 'W1-Mono', inv, 1)];
+    const world = makeWorld('world1', agents, [L1], [yellowRef]);
+    expect(computeSpatialHomophily(world)).toBeNaN();
+  });
+
+  // Test 14 — hand-computed cosine average on a 3×3 Von-Neumann lattice.
+  it('computes mean neighbor cosine on a small lattice', () => {
+    // 3×3 von-neumann lattice; three agents at (0,0)=0, (1,0)=1, (2,0)=2.
+    // (0,0) and (1,0) share inventory => cos=1. (1,0) and (2,0) disjoint => cos=0.
+    // Neighbor pairs over agent positions (each direction counted once per agent):
+    //   agent0 neighbors {1, 3}: agent at 1 (cos=1), no agent at 3.
+    //   agent1 neighbors {0, 2, 4}: agent at 0 (cos=1), agent at 2 (cos=0), no agent at 4.
+    //   agent2 neighbors {1, 5}: agent at 1 (cos=0), no agent at 5.
+    // pairs = 4, sum = 1 + 1 + 0 + 0 = 2 => mean = 0.5.
+    const invSame = makeInv([[L1, yellowRef, yellowLex, 1.0]]);
+    const invDifferent = makeInv([[L1, yellowRef, jauneLex, 1.0]]);
+    const agents = [
+      makeAgent('a0', 'W1-Mono', invSame, 0),
+      makeAgent('a1', 'W1-Mono', invSame, 1),
+      makeAgent('a2', 'W1-Mono', invDifferent, 2),
+    ];
+    const lattice = new LatticeTopology(3, 3, 'von-neumann');
+    const world: World = {
+      id: 'world1',
+      agents,
+      topology: lattice,
+      languages: [L1],
+      referents: [yellowRef],
+    };
+    expect(computeSpatialHomophily(world)).toBeCloseTo(0.5, 9);
+  });
+});
+
 describe('computeScalarMetrics', () => {
   function makeSimpleWorld(worldId: WorldId, agentCount: number): World {
     const inv = makeInv([[L1, yellowRef, yellowLex, 1.0]]);
@@ -389,6 +428,7 @@ describe('computeScalarMetrics', () => {
       'distinctActiveTokens',
       'matchingRate',
       'perLanguage',
+      'spatialHomophily',
       'successRate',
       'successRateByClassPair',
     ];

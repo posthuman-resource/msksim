@@ -1,5 +1,5 @@
 import type { RNG } from '../rng';
-import type { Topology, TopologyKind } from '../topology';
+import type { SpatialOps, Topology, TopologyKind } from '../topology';
 import type { NeighborhoodType } from '@/lib/schema/topology';
 
 // Moore neighborhood: 8-cell (3×3 minus center)
@@ -118,5 +118,72 @@ export class LatticeTopology implements Topology {
         if (j > i) yield [i, j];
       }
     }
+  }
+
+  // ─── Spatial capability (step 34) ──────────────────────────────────────────
+  // Manhattan distance and Von-Neumann (axis-aligned) single-cell moves.
+  // Open boundaries: corner/edge cells have fewer in-bounds neighbors. With
+  // toroidal=true the modular arithmetic in neighbors() wraps positions, but
+  // distance/stepToward/stepAwayFrom intentionally use the open-boundary
+  // metric so that "step toward a partner across the wrap" never traverses
+  // a boundary the renderer doesn't draw. Documented in CLAUDE.md gotchas.
+  //
+  // Direction lex order: N (y-1), E (x+1), S (y+1), W (x-1).
+  // stepToward picks the lex-first neighbor that strictly decreases distance.
+  // stepAwayFrom prefers the cell directly opposite the target's displacement
+  // (PDF page 4: "two steps backward or farther away from each other"), then
+  // falls back to lex order over neighbors that strictly increase distance.
+
+  readonly spatial: SpatialOps = {
+    distance: (a, b) => {
+      const [ax, ay] = this.indexToXY(a);
+      const [bx, by] = this.indexToXY(b);
+      return Math.abs(ax - bx) + Math.abs(ay - by);
+    },
+    stepToward: (from, target) => this.stepInDirection(from, target, +1),
+    stepAwayFrom: (from, target) => this.stepInDirection(from, target, -1),
+  };
+
+  /**
+   * Shared core for stepToward / stepAwayFrom.
+   *   sign === +1 => move toward target (decrease distance).
+   *   sign === -1 => move away from target (increase distance).
+   *
+   * Builds candidates in priority order:
+   *   1. The axial cell in the direction sign·sign(target-from) for x.
+   *   2. The axial cell in the direction sign·sign(target-from) for y.
+   *   3. Lex N, E, S, W as fallback.
+   * Returns the first in-bounds candidate that satisfies the desired
+   * distance change; deduplicates so each cell is checked at most once.
+   */
+  private stepInDirection(from: number, target: number, sign: 1 | -1): number | null {
+    const [fx, fy] = this.indexToXY(from);
+    const [tx, ty] = this.indexToXY(target);
+    const fromDist = Math.abs(fx - tx) + Math.abs(fy - ty);
+
+    const dirX = sign * Math.sign(tx - fx);
+    const dirY = sign * Math.sign(ty - fy);
+
+    const ordered: Array<readonly [number, number]> = [];
+    if (dirX !== 0) ordered.push([fx + dirX, fy]);
+    if (dirY !== 0) ordered.push([fx, fy + dirY]);
+    // Lex fallback N, E, S, W.
+    ordered.push([fx, fy - 1]);
+    ordered.push([fx + 1, fy]);
+    ordered.push([fx, fy + 1]);
+    ordered.push([fx - 1, fy]);
+
+    const seen = new Set<number>();
+    for (const [nx, ny] of ordered) {
+      if (nx < 0 || nx >= this._width || ny < 0 || ny >= this._height) continue;
+      const idx = this.xyToIndex(nx, ny);
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      const newDist = Math.abs(nx - tx) + Math.abs(ny - ty);
+      if (sign === 1 ? newDist < fromDist : newDist > fromDist) {
+        return idx;
+      }
+    }
+    return null;
   }
 }

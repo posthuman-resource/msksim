@@ -51,6 +51,7 @@ function makeScalarSnapshot(opts: {
     successRateByClassPair: emptyByClass,
     distinctActiveTokens: nwVal,
     matchingRate,
+    spatialHomophily: NaN,
     perLanguage,
   });
 

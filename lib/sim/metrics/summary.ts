@@ -35,6 +35,7 @@ function flattenScalar(snapshot: ScalarMetricsSnapshot): Record<string, number> 
   out['world1.successRate'] = snapshot.world1.successRate.rate;
   out['world1.nw'] = snapshot.world1.distinctActiveTokens;
   out['world1.matchingRate'] = snapshot.world1.matchingRate;
+  out['world1.spatialHomophily'] = snapshot.world1.spatialHomophily;
   for (const [lang, m] of Object.entries(snapshot.world1.perLanguage)) {
     out[`world1.perLanguage.${lang}.meanTokenWeight`] = m.meanTokenWeight;
     out[`world1.perLanguage.${lang}.tokenWeightVariance`] = m.tokenWeightVariance;
@@ -44,6 +45,7 @@ function flattenScalar(snapshot: ScalarMetricsSnapshot): Record<string, number> 
   out['world2.successRate'] = snapshot.world2.successRate.rate;
   out['world2.nw'] = snapshot.world2.distinctActiveTokens;
   out['world2.matchingRate'] = snapshot.world2.matchingRate;
+  out['world2.spatialHomophily'] = snapshot.world2.spatialHomophily;
   for (const [lang, m] of Object.entries(snapshot.world2.perLanguage)) {
     out[`world2.perLanguage.${lang}.meanTokenWeight`] = m.meanTokenWeight;
     out[`world2.perLanguage.${lang}.tokenWeightVariance`] = m.tokenWeightVariance;

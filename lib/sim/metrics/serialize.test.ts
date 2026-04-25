@@ -23,6 +23,7 @@ function makeReport(
         successRateByClassPair: {} as never,
         distinctActiveTokens: 10 + tick,
         matchingRate: 0.3 + tick * 0.01,
+        spatialHomophily: NaN,
         perLanguage: {
           L1: { meanTokenWeight: 0.6 + tick * 0.01, tokenWeightVariance: 0.1 },
         } as never,
@@ -32,6 +33,7 @@ function makeReport(
         successRateByClassPair: {} as never,
         distinctActiveTokens: 8 + tick,
         matchingRate: 0.2 + tick * 0.01,
+        spatialHomophily: NaN,
         perLanguage: {
           L2: { meanTokenWeight: 0.5 + tick * 0.01, tokenWeightVariance: 0.2 },
         } as never,

@@ -81,6 +81,16 @@ const SCALAR_METRICS: ReadonlyArray<MetricShape> = [
   },
   { name: 'matching_rate', world: 'world1', extract: (r) => r.scalar.world1.matchingRate },
   { name: 'matching_rate', world: 'world2', extract: (r) => r.scalar.world2.matchingRate },
+  {
+    name: 'spatial_homophily',
+    world: 'world1',
+    extract: (r) => r.scalar.world1.spatialHomophily,
+  },
+  {
+    name: 'spatial_homophily',
+    world: 'world2',
+    extract: (r) => r.scalar.world2.spatialHomophily,
+  },
 ];
 
 const GRAPH_METRICS: ReadonlyArray<MetricShape> = [
@@ -159,6 +169,7 @@ interface MutablePerWorldScalar {
   successRateByClassPair: Record<string, { successful: number; total: number; rate: number }>;
   distinctActiveTokens: number;
   matchingRate: number;
+  spatialHomophily: number;
   perLanguage: Record<string, { meanTokenWeight: number; tokenWeightVariance: number }>;
 }
 
@@ -189,6 +200,7 @@ function emptyPerWorldScalar(): MutablePerWorldScalar {
     successRateByClassPair: {},
     distinctActiveTokens: 0,
     matchingRate: NaN,
+    spatialHomophily: NaN,
     perLanguage: {},
   };
 }
@@ -265,6 +277,9 @@ export function materializeTickReports(
     } else if (metricName === 'matching_rate') {
       const w = world as World;
       report.scalar[w].matchingRate = v;
+    } else if (metricName === 'spatial_homophily') {
+      const w = world as World;
+      report.scalar[w].spatialHomophily = v;
     }
     // Graph metrics
     else if (metricName === 'largest_cluster_size') {

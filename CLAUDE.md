@@ -127,7 +127,7 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - Lattice topologies default to open (non-toroidal) boundaries. Corner cells have fewer neighbors.
 - Topology-agnostic invariant: only `topology/factory.ts` may branch on `topology.kind`.
 - All Zod schemas must be JSON-serializable (no functions/Map/Set) — cross `postMessage` and persist to SQLite. Policies referenced by string id.
-- Engine retry resets per speaker activation. `retries <= retryLimit`. `selectPartner` returns `null` for empty cells.
+- Engine retry resets per speaker activation. `retries <= retryLimit`. `selectPartner` returns `null` for empty cells. Movement (step 34, when enabled) applies after the weight update inside the same activation, not on retries — a speaker who fails-then-succeeds moves once, on the success.
 - Louvain crashes on <2 nodes or 0 edges — guard with `order < 2 || size < 1`.
 - Bare relative imports (no `.js`) in `lib/schema/` files. `@/lib/schema/...` always works.
 - `crypto.subtle.digest` needs secure context (HTTPS or localhost).
@@ -139,6 +139,8 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - Sweep aggregates (step 28) live **only in the sweep form's React state** and are lost on page reload or navigation away from `/experiments/sweep/new`. The underlying replicates persist as ordinary `runs` rows. Persistence to a `sweeps` table is a v2 concern.
 - The step-28 sweepable-parameter catalog (`lib/sim/sweep/parameters.ts`) is hand-maintained, not auto-generated. A module-load-time assertion walks `ExperimentConfig.parse({})` for every catalog dot-path; schema drift surfaces as a loud throw at import time.
 - `successPolicy: 'gaussian'` (step 33) adds **exactly one `rng.nextFloat()` draw per interaction** in the success-determination sub-step; the default `'deterministic'` mode adds zero new draws and is bit-identical to all pre-step-33 runs and config-hashes. Future success-policy kinds must follow the same discipline: per-mode RNG accounting in the engine's RNG draw-order docstring + a "deterministic mode unchanged" backwards-compat test.
+- Movement (`lib/sim/movement.ts`, step 34) is gated by the **capability check** `world.topology.spatial !== undefined`, never by `world.topology.kind`. Adding a future spatial topology only requires implementing `SpatialOps` — engine and movement code do not branch on `kind`. Lattice populates `spatial`; well-mixed and network leave it `undefined`. The `MovementConfig.latticeOnly: true` literal documents this constraint at the config level. With `movement.enabled = false` (the default) `applyMovement` short-circuits, consumes zero RNG, and pre-step-34 runs remain bit-identical.
+- The engine's `mutatePosition` helper (exported, alongside the private `mutateInventory`/`mutateMemory`) extends step 13's "readonly-by-type, mutable-by-discipline" pattern to `AgentState.position`. `lib/sim/movement.ts` imports it; `lib/sim/index.ts` does not re-export it (kept off the public barrel).
 
 ## Living-document rules
 

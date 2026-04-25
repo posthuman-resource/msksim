@@ -25,7 +25,10 @@
 
 import type { AgentClass, AgentId, Language, Referent, TokenLexeme } from '../types';
 import type { World } from '../world';
+import { findAgentByPosition } from '../world';
 import type { InteractionEvent } from '../engine';
+import { cosineSimilarity, topKTokenVector } from '../similarity';
+import type { RNG } from '../rng';
 import type {
   ScalarMetricsSnapshot,
   PerWorldScalarMetrics,
@@ -34,6 +37,28 @@ import type {
   SuccessRateByClassPair,
   ClassPairKey,
 } from './types';
+
+/**
+ * Default top-K for computeSpatialHomophily. Coupled to MovementConfig.topK's
+ * default (10) and step 33's gaussianTopK so a single notion of "linguistic
+ * identity" governs all three features. Hardcoded here rather than threaded
+ * through the metric signature to keep the per-tick metrics pass fully pure
+ * (no MovementConfig dependency).
+ */
+const SPATIAL_HOMOPHILY_TOPK = 10;
+
+/**
+ * No-op RNG sentinel for topology.neighbors() calls that don't need randomness.
+ * The lattice implementation ignores the rng argument; well-mixed and network
+ * never reach this code path because spatialHomophily is gated on `spatial`.
+ */
+const NO_RNG: RNG = {
+  nextInt: () => 0,
+  nextFloat: () => 0,
+  pick: <T>(a: T[]) => a[0],
+  pickWeighted: <T>(a: T[]) => a[0],
+  shuffle: <T>(a: readonly T[]) => [...a],
+};
 
 // ─── Class-pair key enumeration ───────────────────────────────────────────────
 
@@ -321,6 +346,46 @@ export function computeMatchingRate(
   return validRates.reduce((s, r) => s + r, 0) / validRates.length;
 }
 
+// ─── Spatial homophily (step 34) ──────────────────────────────────────────────
+
+/**
+ * Average cosine similarity between an agent and its lattice neighbors,
+ * over top-K token-weight vectors.
+ *
+ *   spatialHomophily(world) = mean_{(a,n) ∈ neighborPairs} cos(a, n)
+ *
+ * The summation walks each agent's topology neighbors and resolves them via
+ * findAgentByPosition; empty cells are skipped. Each ordered (agent, neighbor)
+ * pair contributes once — the sum effectively double-counts each undirected
+ * edge, but since both directions contribute the same cosine value, the
+ * resulting average is unchanged.
+ *
+ * Returns NaN when:
+ *   - the topology has no spatial capability (well-mixed, network), OR
+ *   - no neighbor pairs exist (size-1 lattice or all cells empty).
+ *
+ * Computed every tick regardless of config.movement.enabled — useful as a
+ * baseline observable even without migration. Cost: O(N × |neighborhood|).
+ */
+export function computeSpatialHomophily(world: World): number {
+  if (!world.topology.spatial) return Number.NaN;
+
+  let sum = 0;
+  let pairCount = 0;
+  for (const agent of world.agents) {
+    const agentVec = topKTokenVector(agent.inventory, SPATIAL_HOMOPHILY_TOPK);
+    for (const neighborPos of world.topology.neighbors(agent.position, NO_RNG)) {
+      const neighbor = findAgentByPosition(world, neighborPos);
+      if (!neighbor) continue;
+      const neighborVec = topKTokenVector(neighbor.inventory, SPATIAL_HOMOPHILY_TOPK);
+      sum += cosineSimilarity(agentVec, neighborVec);
+      pairCount++;
+    }
+  }
+  if (pairCount === 0) return Number.NaN;
+  return sum / pairCount;
+}
+
 // ─── Composite entrypoint ─────────────────────────────────────────────────────
 
 /**
@@ -368,6 +433,7 @@ export function computeScalarMetrics(
       ),
       distinctActiveTokens: computeDistinctActiveTokens(world),
       matchingRate: computeMatchingRate(world, argmax),
+      spatialHomophily: computeSpatialHomophily(world),
       perLanguage,
     };
   }

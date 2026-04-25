@@ -111,3 +111,46 @@ describe('LatticeTopology', () => {
     expect(t.size).toBe(20);
   });
 });
+
+describe('LatticeTopology spatial (step 34)', () => {
+  // Test 10: distance is Manhattan over open boundaries.
+  it('distance returns Manhattan distance', () => {
+    const t = new LatticeTopology(5, 5, 'moore');
+    expect(t.spatial.distance(0, 24)).toBe(8); // (0,0) → (4,4)
+    expect(t.spatial.distance(0, 4)).toBe(4); // (0,0) → (4,0)
+    expect(t.spatial.distance(12, 12)).toBe(0); // (2,2) → (2,2)
+  });
+
+  // Test 11: stepToward traces lex-greedy path; reaches target in 8 steps.
+  it('stepToward picks east first from (0,0) toward (4,4) and reaches target in 8 steps', () => {
+    const t = new LatticeTopology(5, 5, 'moore');
+    const start = t.xyToIndex(0, 0);
+    const target = t.xyToIndex(4, 4);
+
+    expect(t.spatial.stepToward(start, target)).toBe(t.xyToIndex(1, 0));
+
+    let cur = start;
+    for (let i = 0; i < 8; i++) {
+      const next = t.spatial.stepToward(cur, target);
+      expect(next).not.toBeNull();
+      cur = next!;
+    }
+    expect(cur).toBe(target);
+    // At target → no further improving move.
+    expect(t.spatial.stepToward(cur, target)).toBeNull();
+  });
+
+  // Test 12: stepAwayFrom returns null at corner-with-no-farther-neighbor; returns
+  // axial-opposite for non-corner cases.
+  it('stepAwayFrom returns null at corner with no farther neighbor; otherwise axial-opposite', () => {
+    const t = new LatticeTopology(5, 5, 'moore');
+    // From (0,0) toward (4,4): every in-bounds neighbor is closer to (4,4).
+    expect(t.spatial.stepAwayFrom(t.xyToIndex(0, 0), t.xyToIndex(4, 4))).toBeNull();
+
+    // From (2,2) toward (3,3): axial-opposite is west (1,2)=11.
+    expect(t.spatial.stepAwayFrom(t.xyToIndex(2, 2), t.xyToIndex(3, 3))).toBe(t.xyToIndex(1, 2));
+
+    // From (2,2) toward (3,2): axial-opposite west (1,2)=11.
+    expect(t.spatial.stepAwayFrom(t.xyToIndex(2, 2), t.xyToIndex(3, 2))).toBe(t.xyToIndex(1, 2));
+  });
+});

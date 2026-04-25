@@ -482,6 +482,151 @@ describe('selectPartner', () => {
   });
 });
 
+describe('tick — movement (step 34)', () => {
+  // Test 7: default config (movement.enabled=false) keeps all positions stable.
+  it('default config: agent positions are unchanged after 50 ticks (movement disabled)', () => {
+    const config = ExperimentConfig.parse({
+      world1: {
+        agentCount: 9,
+        topology: { type: 'lattice', width: 3, height: 3, neighborhood: 'moore' },
+      },
+      world2: {
+        agentCount: 9,
+        topology: { type: 'lattice', width: 3, height: 3, neighborhood: 'moore' },
+      },
+      schedulerMode: 'sequential',
+    });
+    const state = buildState(config, 11);
+    const initialPositions = state.world1.agents.map((a) => a.position).slice();
+    const rng = createRNG(11);
+    runTicks(state, rng, 50);
+    expect(state.world1.agents.map((a) => a.position)).toEqual(initialPositions);
+  });
+
+  // Test 8: movement applies after weight update; weights still reflect updateWeight.
+  it('with movement enabled, weights reflect post-update value AND speaker position changes', () => {
+    // 2x1 lattice -> exactly two cells, both agents always adjacent.
+    // Identical inventories => cosine similarity = 1.0 >= attractThreshold.
+    const vocabSeed = {
+      'W1-Mono': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+      'W1-Bi': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+      'W2-Native': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+      'W2-Immigrant': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+    };
+    const config = ExperimentConfig.parse({
+      world1: {
+        agentCount: 2,
+        topology: { type: 'lattice', width: 2, height: 1, neighborhood: 'moore' },
+        referents: ['yellow-like'],
+        vocabularySeed: vocabSeed,
+      },
+      world2: {
+        agentCount: 2,
+        topology: { type: 'lattice', width: 2, height: 1, neighborhood: 'moore' },
+        referents: ['yellow-like'],
+        vocabularySeed: vocabSeed,
+      },
+      schedulerMode: 'sequential',
+      deltaPositive: 0.5,
+      movement: {
+        enabled: true,
+        attractThreshold: 0.5,
+        attractStep: 1,
+        repelStep: 0,
+        collisionPolicy: 'swap',
+        topK: 10,
+        latticeOnly: true,
+      },
+    });
+    const state = buildState(config, 1);
+    const rng = createRNG(1);
+    const result = tick(state, rng);
+
+    // At least one successful interaction must have occurred.
+    const w1Successes = result.interactions.filter((e) => e.success && e.worldId === 'world1');
+    expect(w1Successes.length).toBeGreaterThan(0);
+
+    // Weight update happened: at least one agent's "yellow" weight is > 1.0.
+    const yellowWeights = state.world1.agents.flatMap((a) => {
+      const out: number[] = [];
+      for (const [, refMap] of a.inventory) {
+        for (const [, lexMap] of refMap) {
+          for (const w of lexMap.values()) out.push(w);
+        }
+      }
+      return out;
+    });
+    expect(yellowWeights.some((w) => w > 1.0)).toBe(true);
+
+    // Both agents still on the 2-cell lattice and at distinct positions.
+    const positions = state.world1.agents.map((a) => a.position);
+    expect(new Set(positions).size).toBe(2);
+    for (const p of positions) {
+      expect(p).toBeGreaterThanOrEqual(0);
+      expect(p).toBeLessThan(2);
+    }
+  });
+
+  // Test 9: positions remain distinct (no two agents share a cell) after several
+  // ticks with movement and swap collisions enabled.
+  it('keeps agent positions distinct on a small lattice across multiple ticks', () => {
+    const vocabSeed = {
+      'W1-Mono': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+      'W1-Bi': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+      'W2-Native': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+      'W2-Immigrant': {
+        L1: { 'yellow-like': [{ lexeme: 'yellow', initialWeight: 1.0 }] },
+      },
+    };
+    const config = ExperimentConfig.parse({
+      world1: {
+        agentCount: 2,
+        topology: { type: 'lattice', width: 2, height: 1, neighborhood: 'moore' },
+        referents: ['yellow-like'],
+        vocabularySeed: vocabSeed,
+      },
+      world2: {
+        agentCount: 2,
+        topology: { type: 'lattice', width: 2, height: 1, neighborhood: 'moore' },
+        referents: ['yellow-like'],
+        vocabularySeed: vocabSeed,
+      },
+      schedulerMode: 'sequential',
+      retryLimit: 0,
+      movement: {
+        enabled: true,
+        attractThreshold: 0.5,
+        attractStep: 1,
+        repelStep: 0,
+        collisionPolicy: 'swap',
+        topK: 10,
+        latticeOnly: true,
+      },
+    });
+    const state = buildState(config, 99);
+    const rng = createRNG(99);
+    runTicks(state, rng, 4);
+
+    const positions = state.world1.agents.map((a) => a.position);
+    expect(new Set(positions).size).toBe(positions.length);
+    expect(state.tickNumber).toBe(4);
+  });
+});
+
 describe('tick — tickNumber advancement', () => {
   // Verify tickNumber increments correctly across multiple ticks
   it('tickNumber advances by 1 per tick call', () => {

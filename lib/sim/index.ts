@@ -38,6 +38,11 @@ export {
   computeMatchingRate,
   computeMeanTokenWeight,
   computeScalarMetrics,
+  computeSpatialHomophily,
   computeSuccessRateByClassPair,
   computeTokenWeightVariance,
 } from './metrics/scalar';
+
+// Step 34: linguistic migration public API
+export type { ApplyMovementArgs } from './movement';
+export { applyMovement } from './movement';
