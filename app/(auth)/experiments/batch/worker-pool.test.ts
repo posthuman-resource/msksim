@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import type { Remote } from 'comlink';
 import { createWorkerPool } from './worker-pool';
 import type { PersistCompletedHandler, PersistFailedHandler } from './worker-pool';
+import type { SimulationWorkerApi } from '@/lib/sim/worker-client';
+import type { ExperimentConfig } from '@/lib/schema/experiment';
 
 // ─── Shared mock helpers ─────────────────────────────────────────────────────
 
@@ -55,7 +58,7 @@ function makeMockFactory(behaviors: Behavior[]) {
     };
 
     return {
-      api: api as any,
+      api: api as unknown as Remote<SimulationWorkerApi>,
       terminate: () => {
         terminateCalls.push(idx);
       },
@@ -75,7 +78,7 @@ function makeSpec(
   overrides: Partial<Parameters<ReturnType<typeof createWorkerPool>['startBatch']>[0]> = {},
 ) {
   return {
-    config: {} as any,
+    config: {} as ExperimentConfig,
     configId: 'test-config-id',
     replicateCount: 3,
     baseSeed: 1,
@@ -206,7 +209,7 @@ describe('worker-pool', () => {
           [Symbol.dispose]: vi.fn(),
         };
 
-        return { api: api as any, terminate: vi.fn() };
+        return { api: api as unknown as Remote<SimulationWorkerApi>, terminate: vi.fn() };
       };
 
       const pool = createWorkerPool({ persistCompleted, persistFailed, createWorker: factory });

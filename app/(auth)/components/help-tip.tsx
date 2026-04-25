@@ -15,9 +15,9 @@ export function HelpTip({ helpKey, variant = 'light' }: HelpTipProps) {
   const ref = useRef<HTMLSpanElement>(null);
 
   const text = helpText[helpKey];
-  if (!text) return null;
 
-  // Close on outside click
+  // Close on outside click. Hook must run unconditionally per rules-of-hooks
+  // — the early-return for missing helpText comes after.
   useEffect(() => {
     if (!open) return;
     function onMouseDown(e: MouseEvent) {
@@ -28,6 +28,8 @@ export function HelpTip({ helpKey, variant = 'light' }: HelpTipProps) {
     document.addEventListener('mousedown', onMouseDown);
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, [open]);
+
+  if (!text) return null;
 
   const isLight = variant === 'light';
 

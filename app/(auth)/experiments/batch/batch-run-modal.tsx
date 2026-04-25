@@ -88,25 +88,22 @@ function ReplicateCell({ replicate }: { replicate: ReplicateState }) {
 
 export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
   // Form state
-  const [selectedConfigId, setSelectedConfigId] = useState<string>('');
+  const [selectedConfigIdState, setSelectedConfigId] = useState<string>('');
   const [replicateCount, setReplicateCount] = useState(3);
   const [baseSeed, setBaseSeed] = useState(1);
   const [totalTicks, setTotalTicks] = useState(50);
-  const [concurrency, setConcurrency] = useState(1);
+  // navigator.hardwareConcurrency is undefined during SSR — read inside a
+  // useState initializer (per CLAUDE.md "Known gotchas") to avoid the
+  // setState-in-effect lint rule and the SSR/CSR mismatch in one shot.
+  const [concurrency, setConcurrency] = useState<number>(() => {
+    if (typeof navigator === 'undefined') return 1;
+    return Math.max(1, Math.min(8, (navigator.hardwareConcurrency ?? 2) - 1));
+  });
 
-  // Set default concurrency from navigator on mount
-  useEffect(() => {
-    if (typeof navigator !== 'undefined') {
-      setConcurrency(Math.max(1, Math.min(8, (navigator.hardwareConcurrency ?? 2) - 1)));
-    }
-  }, []);
-
-  // Auto-select first config when configs load
-  useEffect(() => {
-    if (configs.length > 0 && !selectedConfigId) {
-      setSelectedConfigId(configs[0].id);
-    }
-  }, [configs, selectedConfigId]);
+  // Auto-select first config when configs load — derived during render
+  // rather than via a setState-in-effect, per the React "you might not need
+  // an effect" guidance.
+  const selectedConfigId = selectedConfigIdState || configs[0]?.id || '';
 
   // Pool ref — persists across renders
   const poolRef = useRef<ReturnType<typeof createWorkerPool> | null>(null);

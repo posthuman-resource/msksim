@@ -763,12 +763,15 @@ function WorldSection({
             className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-xs"
             spellCheck={false}
           />
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {(worldErrors as any)?.vocabularySeed && (
-            <p className="mt-0.5 text-xs text-red-600">
-              {(worldErrors as any).vocabularySeed?.message}
-            </p>
-          )}
+          {(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const vocabErr = (worldErrors as any)?.vocabularySeed as
+              | { message?: string }
+              | undefined;
+            return vocabErr ? (
+              <p className="mt-0.5 text-xs text-red-600">{vocabErr.message}</p>
+            ) : null;
+          })()}
         </div>
       </div>
     </section>
