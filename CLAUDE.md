@@ -101,6 +101,7 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - `next/dynamic` with `ssr: false` invalid in Server Components — import client components directly.
 - **Multi-worker batches (step 27)**: `app/(auth)/experiments/batch/worker-pool.ts` calls `createSimulationWorker()` N times (N = concurrency, capped at 8). Slots reuse workers via `dispatchNext(slotIndex)`. Cancellation calls `terminate()` + `Promise.race` with a cancellation token. Pool persists every terminal replicate via step 26's `persistCompletedRun` or `persistFailedReplicate`.
 - **Worker pool testing**: the pool's `createWorker` option is injectable — unit tests pass mock factories returning `{ api, terminate }` stubs without constructing real Workers.
+- **Parameter sweeps (step 28)**: `app/(auth)/experiments/sweep/sweep-runner.ts` composes the step-27 pool — `createWorkerPool` is called once per sweep and `pool.startBatch(cellSpec)` is invoked sequentially per cell, awaiting each batch's drain via an `onUpdate`-based promise. Cancellation calls `pool.cancelBatch()` on the in-flight cell and marks remaining cells `cancelled` without running them. Per-cell aggregates are computed in memory after each cell drains via `loadRunSummary(runId)` calls into step 26's runs DAL.
 
 ## Visualization extensions
 
@@ -135,6 +136,8 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - `navigator.hardwareConcurrency` is **undefined during SSR**. Read it inside `useState` function-initializer or `useEffect`, not at module scope. Degrade: `typeof navigator === 'undefined' ? 1 : Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1)`.
 - Server Action body limit is 1MB by default. Batch runs with large `metricsTimeSeries` exceed this. Set `experimental.serverActions.bodySizeLimit` in `next.config.ts`.
 - `useSyncExternalStore` compares snapshots via `Object.is`. If `getSnapshot` returns a new object every call (e.g., `structuredClone`), React re-renders infinitely. Cache the snapshot and return the same reference between emits.
+- Sweep aggregates (step 28) live **only in the sweep form's React state** and are lost on page reload or navigation away from `/experiments/sweep/new`. The underlying replicates persist as ordinary `runs` rows. Persistence to a `sweeps` table is a v2 concern.
+- The step-28 sweepable-parameter catalog (`lib/sim/sweep/parameters.ts`) is hand-maintained, not auto-generated. A module-load-time assertion walks `ExperimentConfig.parse({})` for every catalog dot-path; schema drift surfaces as a loud throw at import time.
 
 ## Living-document rules
 

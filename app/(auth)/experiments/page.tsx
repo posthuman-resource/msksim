@@ -37,6 +37,15 @@ export default async function ExperimentsPage() {
         </div>
         <div className="flex items-center gap-2">
           {rows.length > 0 && <BatchRunButton configs={batchConfigs} />}
+          {rows.length > 0 && (
+            <Link
+              data-testid="sweep-new-link"
+              href="/experiments/sweep/new"
+              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+            >
+              New sweep
+            </Link>
+          )}
           <Link
             href="/experiments/new"
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
