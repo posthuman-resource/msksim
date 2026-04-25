@@ -138,6 +138,7 @@ Plan-step commits: `step NN: <title>` (exactly one commit per step). Non-plan: c
 - `useSyncExternalStore` compares snapshots via `Object.is`. If `getSnapshot` returns a new object every call (e.g., `structuredClone`), React re-renders infinitely. Cache the snapshot and return the same reference between emits.
 - Sweep aggregates (step 28) live **only in the sweep form's React state** and are lost on page reload or navigation away from `/experiments/sweep/new`. The underlying replicates persist as ordinary `runs` rows. Persistence to a `sweeps` table is a v2 concern.
 - The step-28 sweepable-parameter catalog (`lib/sim/sweep/parameters.ts`) is hand-maintained, not auto-generated. A module-load-time assertion walks `ExperimentConfig.parse({})` for every catalog dot-path; schema drift surfaces as a loud throw at import time.
+- `successPolicy: 'gaussian'` (step 33) adds **exactly one `rng.nextFloat()` draw per interaction** in the success-determination sub-step; the default `'deterministic'` mode adds zero new draws and is bit-identical to all pre-step-33 runs and config-hashes. Future success-policy kinds must follow the same discipline: per-mode RNG accounting in the engine's RNG draw-order docstring + a "deterministic mode unchanged" backwards-compat test.
 
 ## Living-document rules
 

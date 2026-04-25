@@ -88,6 +88,7 @@ function makeEvent(
     referent: 'yellow-like' as InteractionEvent['referent'],
     token: 'yellow' as InteractionEvent['token'],
     success,
+    successProbability: null,
   };
 }
 

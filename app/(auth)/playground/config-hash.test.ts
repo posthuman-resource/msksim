@@ -13,8 +13,13 @@ import { canonicalStringify, computeConfigHash, computeConfigHashShort } from '.
 // Uses seed=42 and empty vocabularySeed objects so the fixture is stable across
 // any future defaultVocabularySeed changes. The fixture is cast to ExperimentConfig
 // because the test does not exercise Zod parsing (only the hash helper's pure logic).
+//
+// `successPolicy` (added in step 33) is intentionally omitted from this fixture so
+// that FIXTURE_HASH continues to assert: "v1-shaped configs that do not specify a
+// successPolicy hash to the same value as before step 33." That is the load-bearing
+// backwards-compatibility invariant for the gaussian success policy.
 
-const FIXTURE_CONFIG: ExperimentConfig = {
+const FIXTURE_CONFIG = {
   seed: 42,
   tickCount: 5000,
   deltaPositive: 0.1,
@@ -60,7 +65,7 @@ const FIXTURE_CONFIG: ExperimentConfig = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vocabularySeed: {} as any,
   },
-};
+} as unknown as ExperimentConfig;
 
 // Pre-computed SHA-256 of canonicalStringify(FIXTURE_CONFIG).
 // Computed once via `node /tmp/claude/compute-hash.mjs` and committed here as a regression guard.
@@ -108,7 +113,7 @@ describe('computeConfigHash — known-answer test', () => {
 describe('computeConfigHash — canonicalization invariance', () => {
   it('returns the same hash regardless of top-level key order', async () => {
     // Construct the same fixture with keys in reverse order.
-    const reordered: ExperimentConfig = {
+    const reordered = {
       world2: FIXTURE_CONFIG.world2,
       world1: FIXTURE_CONFIG.world1,
       seed: FIXTURE_CONFIG.seed,
@@ -125,7 +130,7 @@ describe('computeConfigHash — canonicalization invariance', () => {
       deltaNegative: FIXTURE_CONFIG.deltaNegative,
       deltaPositive: FIXTURE_CONFIG.deltaPositive,
       tickCount: FIXTURE_CONFIG.tickCount,
-    };
+    } as unknown as ExperimentConfig;
     const hash = await computeConfigHash(reordered);
     expect(hash).toBe(FIXTURE_HASH);
   });

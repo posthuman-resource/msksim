@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { cosineSimilarity, topKTokenVector, type TokenVector } from './similarity';
+import {
+  cosineSimilarity,
+  euclideanDistanceSq,
+  topKTokenVector,
+  type TokenVector,
+} from './similarity';
 import { emptyInventory, inventorySet } from './types';
 import type { Inventory } from './types';
 
@@ -116,6 +121,40 @@ describe('cosineSimilarity', () => {
     // dot = 1*1 = 1, |a| = 1, |b| = sqrt(2)
     const expected = 1 / Math.sqrt(2);
     expect(cosineSimilarity(a, b)).toBeCloseTo(expected, 10);
+  });
+});
+
+// ─── euclideanDistanceSq tests ────────────────────────────────────────────────
+
+describe('euclideanDistanceSq', () => {
+  it('identical vectors → 0', () => {
+    const a = tv({ 'L1:red': 1.0, 'L1:yellow': 0.5 });
+    const b = tv({ 'L1:red': 1.0, 'L1:yellow': 0.5 });
+    expect(euclideanDistanceSq(a, b)).toBe(0);
+  });
+
+  it('symmetric: euclideanDistanceSq(a, b) === euclideanDistanceSq(b, a)', () => {
+    const pairs: Array<[TokenVector, TokenVector]> = [
+      [tv({ 'L1:yellow': 3.0, 'L1:red': 1.0 }), tv({ 'L1:yellow': 1.0, 'L2:jaune': 2.0 })],
+      [tv({ 'L1:yellow': 1.0 }), tv({ 'L1:yellow': 0.5, 'L1:red': 0.5 })],
+      [tv({ 'L1:yellow': 2.0, 'L2:jaune': 3.0 }), tv({ 'L1:yellow': 3.0, 'L2:jaune': 2.0 })],
+    ];
+    for (const [a, b] of pairs) {
+      expect(euclideanDistanceSq(a, b)).toBe(euclideanDistanceSq(b, a));
+    }
+  });
+
+  it('disjoint keys: distance² = sum of squared weights', () => {
+    const a = tv({ 'L1:red': 1.0 });
+    const b = tv({ 'L1:yellow': 1.0 });
+    // (1 - 0)² + (0 - 1)² = 2
+    expect(euclideanDistanceSq(a, b)).toBe(2);
+  });
+
+  it('two empty vectors → 0 (no NaN, no division)', () => {
+    const result = euclideanDistanceSq(new Map(), new Map());
+    expect(result).toBe(0);
+    expect(Number.isNaN(result)).toBe(false);
   });
 });
 

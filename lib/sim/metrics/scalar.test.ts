@@ -91,6 +91,7 @@ function makeEvent(
     referent,
     token,
     success,
+    successProbability: null,
   };
 }
 

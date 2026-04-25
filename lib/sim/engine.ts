@@ -29,6 +29,7 @@ import { findAgentByPosition } from './world';
 import { createPolicy } from './policy/registry';
 import { updateWeight } from './engine/weight-update';
 import { createPartnerSelector } from './partner-selector';
+import { euclideanDistanceSq, topKTokenVector } from './similarity';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -66,6 +67,14 @@ export type InteractionEvent = {
   referent: Referent;
   token: TokenLexeme;
   success: boolean;
+  /**
+   * Success probability `Ps` for this interaction under the configured success policy.
+   *   - `null` when `config.successPolicy.kind === 'deterministic'` (the v1 default).
+   *   - A number in `[0, 1]` when `config.successPolicy.kind === 'gaussian'`.
+   * Step 33 emits this raw signal so future calibration metrics can verify that
+   * Ps≈p interactions succeed at rate p in the long run.
+   */
+  successProbability: number | null;
 };
 
 /**
@@ -183,7 +192,11 @@ function getActivationOrder(
  *        b. policy call → rng draw (only for coin-flip rules)
  *        c. rng.pick(referentKeys) → one rng draw
  *        d. rng.pickWeighted(lexemes, weights) → one rng draw
- *        (retry loop repeats b–d up to retryLimit times on failure)
+ *        e'. Gaussian success: rng.nextFloat() — exactly one draw, only when
+ *            config.successPolicy.kind === 'gaussian'. The 'deterministic' arm
+ *            (the v1 default) consumes zero new draws, preserving bit-identical
+ *            determinism with all pre-step-33 runs and config-hashes.
+ *        (retry loop repeats b–e' up to retryLimit times on failure)
  */
 export function tick(state: SimulationState, rng: RNG): TickResult {
   const { world1, world2, tickNumber, config } = state;
@@ -277,13 +290,44 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
         }
         const token = rng.pickWeighted(lexemes, weights);
 
-        // ── (e) Hearer guess ───────────────────────────────────────────────
-        // A positive weight for (language, referent, token) is a success.
-        // NOTE: The place to apply a per-interaction mishearing probability
-        // (spec §11 OQ4) would be here, between the lookup and the success branch.
-        // No noise hook is wired in v1; a future noise step inserts here.
-        const hearerWeight = hearer.inventory.get(language)?.get(referent)?.get(token);
-        const success = hearerWeight !== undefined && hearerWeight > 0;
+        // ── (e) Hearer guess / success determination ───────────────────────
+        // The success rule is configurable per `config.successPolicy.kind`:
+        //   - 'deterministic' (default, v1): success iff hearer holds a positive
+        //     weight for (language, referent, token). Consumes zero RNG draws.
+        //   - 'gaussian' (step 33, opt-in): success ~ Bernoulli(Ps) where
+        //     Ps = exp(-‖vS - vH‖² / (2σ²)) over top-K token-weight vectors.
+        //     Consumes exactly one rng.nextFloat() draw, called at this fixed
+        //     point in the sub-step order (the determinism contract relies on this).
+        //
+        // NOTE: Spec §11 OQ4 mishearing belongs strictly between the token lookup
+        // and the success branch — it would corrupt the (referent, token) pair en
+        // route to the hearer. The gaussian rule is NOT noise; it replaces the
+        // success branch entirely. A future noise step must NOT be bolted into
+        // the gaussian arm.
+        let success: boolean;
+        let successProbability: number | null = null;
+        switch (config.successPolicy.kind) {
+          case 'deterministic': {
+            const hearerWeight = hearer.inventory.get(language)?.get(referent)?.get(token);
+            success = hearerWeight !== undefined && hearerWeight > 0;
+            break;
+          }
+          case 'gaussian': {
+            const k = config.successPolicy.gaussianTopK;
+            const speakerVec = topKTokenVector(speaker.inventory, k);
+            const hearerVec = topKTokenVector(hearer.inventory, k);
+            const distSq = euclideanDistanceSq(speakerVec, hearerVec);
+            const sigma = config.successPolicy.sigma;
+            successProbability = Math.exp(-distSq / (2 * sigma * sigma));
+            // Single rng draw per gaussian-mode interaction — see RNG draw-order docstring.
+            success = rng.nextFloat() < successProbability;
+            break;
+          }
+          default: {
+            const _exhaustive: never = config.successPolicy;
+            throw new Error(`Unknown success policy: ${JSON.stringify(_exhaustive)}`);
+          }
+        }
 
         // Emit the interaction event (uses pre-increment tickNumber per convention).
         events.push({
@@ -297,6 +341,7 @@ export function tick(state: SimulationState, rng: RNG): TickResult {
           referent,
           token,
           success,
+          successProbability,
         });
 
         // ── (f) Weight update ──────────────────────────────────────────────

@@ -21,6 +21,7 @@ function makeEvent(speakerId: string, hearerId: string, success: boolean): Inter
     referent: 'yellow-like' as InteractionEvent['referent'],
     token: 'yellow' as InteractionEvent['token'],
     success,
+    successProbability: null,
   };
 }
 

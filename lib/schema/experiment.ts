@@ -3,6 +3,7 @@ import { WeightUpdateRule } from './primitives';
 import { WorldConfig } from './world';
 import { LanguagePolicySet } from './policy';
 import { PreferentialAttachmentConfig } from './preferential';
+import { SuccessPolicyConfig, defaultSuccessPolicyConfig } from './success';
 import {
   defaultLanguagePolicies,
   defaultWorldConfig,
@@ -63,6 +64,10 @@ export const ExperimentConfig = z.object({
 
   // per docs/spec.md §4.1 F6 — preferential attachment rule
   preferentialAttachment: PreferentialAttachmentConfig.default(defaultPreferentialAttachmentConfig),
+
+  // per docs/plan/33-gaussian-success-policy.md — opt-in probabilistic success policy.
+  // Default 'deterministic' is bit-identical to v1 and consumes zero new RNG draws.
+  successPolicy: SuccessPolicyConfig.default(defaultSuccessPolicyConfig),
 
   // per docs/spec.md §4.1 F10 — RNG seed; 0 is explicitly supported
   seed: z.number().int().default(DEFAULT_SEED),

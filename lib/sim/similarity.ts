@@ -67,6 +67,46 @@ export function cosineSimilarity(a: TokenVector, b: TokenVector): number {
   return dotProduct / denom;
 }
 
+// ─── euclideanDistanceSq ──────────────────────────────────────────────────────
+
+/**
+ * Squared Euclidean distance between two token weight vectors.
+ *
+ * Used by the gaussian success policy (step 33) — the kernel
+ * `Ps = exp(-‖a - b‖² / (2σ²))` evaluates the squared norm directly, so we
+ * skip the `Math.sqrt` and let the caller hand the value to `Math.exp`.
+ *
+ * Range: [0, ∞).
+ *
+ * Edge cases:
+ *   - Identical vectors → 0 (exact, not just close-to-zero).
+ *   - Two empty vectors → 0 (no NaN, no division).
+ *   - Missing keys are treated as 0 weight (so `(av - 0)² = av²`).
+ *
+ * Symmetric in its arguments by construction: every key in `a` and every
+ * key in `b` is visited exactly once. No allocations beyond iterator state.
+ */
+export function euclideanDistanceSq(a: TokenVector, b: TokenVector): number {
+  let sum = 0;
+
+  // Walk keys from `a` — captures both shared keys and a-only keys.
+  for (const [key, av] of a) {
+    const bv = b.get(key) ?? 0;
+    const diff = av - bv;
+    sum += diff * diff;
+  }
+
+  // Walk keys from `b` for any keys not already seen in `a` (b-only keys).
+  for (const [key, bv] of b) {
+    if (!a.has(key)) {
+      // a-side missing → diff = 0 - bv = -bv → squared = bv²
+      sum += bv * bv;
+    }
+  }
+
+  return sum;
+}
+
 // ─── topKTokenVector ──────────────────────────────────────────────────────────
 
 /**
