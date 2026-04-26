@@ -40,11 +40,11 @@ const INITIAL_STATE: BatchState = {
 
 function ReplicateCell({ replicate }: { replicate: ReplicateState }) {
   const statusColor: Record<string, string> = {
-    pending: 'bg-zinc-100 text-zinc-500',
-    running: 'bg-blue-50 text-blue-700',
-    completed: 'bg-green-50 text-green-700',
-    failed: 'bg-red-50 text-red-700',
-    cancelled: 'bg-amber-50 text-amber-700',
+    pending: 'bg-surface-muted text-fg-muted',
+    running: 'bg-accent-soft text-accent',
+    completed: 'bg-success-bg text-success',
+    failed: 'bg-danger-bg text-danger',
+    cancelled: 'bg-warn-bg text-warn',
   };
 
   const pct =
@@ -53,30 +53,30 @@ function ReplicateCell({ replicate }: { replicate: ReplicateState }) {
   return (
     <div
       data-testid={`replicate-${replicate.id}`}
-      className={`rounded-lg border p-3 ${statusColor[replicate.status] ?? 'bg-zinc-50'}`}
+      className={`rounded-md border border-border p-3 ${statusColor[replicate.status] ?? 'bg-surface-muted'}`}
     >
       <div className="flex items-center justify-between text-xs font-medium">
-        <span>Seed {replicate.seed}</span>
+        <span className="font-mono">Seed {replicate.seed}</span>
         <span data-testid={`replicate-${replicate.id}-status`}>{replicate.status}</span>
       </div>
       {replicate.status === 'running' && (
         <div className="mt-1.5">
-          <div className="h-1.5 rounded-full bg-blue-200">
+          <div className="h-1.5 rounded-full bg-surface-muted">
             <div
-              className="h-1.5 rounded-full bg-blue-600 transition-all"
+              className="h-1.5 rounded-full bg-accent transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="mt-0.5 block text-[10px]">
+          <span className="mt-0.5 block text-[10px] font-mono">
             tick {replicate.tick}/{replicate.totalTicks}
           </span>
         </div>
       )}
       {replicate.status === 'completed' && (
-        <span className="mt-1 block text-[10px]">{replicate.tick} ticks</span>
+        <span className="mt-1 block text-[10px] font-mono">{replicate.tick} ticks</span>
       )}
       {replicate.status === 'failed' && replicate.errorMessage && (
-        <span className="mt-1 block text-[10px] text-red-600 truncate">
+        <span className="mt-1 block text-[10px] text-danger truncate">
           {replicate.errorMessage}
         </span>
       )}
@@ -175,13 +175,16 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
   const modal = (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/40" onClick={handleClose} />
+      <div className="absolute inset-0 bg-fg/40 backdrop-blur-sm" onClick={handleClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-900">Batch Run</h2>
-          <span data-testid="batch-status-overall" className="text-sm font-medium text-zinc-500">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md border border-border bg-surface p-6 shadow-lg">
+        <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+          <h2 className="font-serif text-xl font-semibold text-fg">Batch run</h2>
+          <span
+            data-testid="batch-status-overall"
+            className="text-xs font-medium uppercase tracking-wide text-fg-muted"
+          >
             {batchState.status}
           </span>
         </div>
@@ -190,10 +193,10 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
         {batchState.status === 'idle' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Configuration</label>
+              <label className="block text-sm font-medium text-fg mb-1">Configuration</label>
               <select
                 data-testid="batch-config-select"
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 value={selectedConfigId}
                 onChange={(e) => setSelectedConfigId(e.target.value)}
               >
@@ -207,7 +210,7 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   Replicates
                   <HelpTip helpKey="batch.replicates" />
                 </label>
@@ -220,12 +223,12 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
                   onChange={(e) =>
                     setReplicateCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
                   }
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   Base seed
                   <HelpTip helpKey="batch.baseSeed" />
                 </label>
@@ -234,12 +237,12 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
                   type="number"
                   value={baseSeed}
                   onChange={(e) => setBaseSeed(Number(e.target.value) || 1)}
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   Concurrency ({concurrency}/{maxConcurrency})
                   <HelpTip helpKey="batch.concurrency" />
                 </label>
@@ -250,12 +253,12 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
                   max={maxConcurrency}
                   value={concurrency}
                   onChange={(e) => setConcurrency(Number(e.target.value))}
-                  className="w-full"
+                  className="w-full accent-accent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   Total ticks
                   <HelpTip helpKey="batch.totalTicks" />
                 </label>
@@ -265,7 +268,7 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
                   min={1}
                   value={totalTicks}
                   onChange={(e) => setTotalTicks(Math.max(1, Number(e.target.value) || 50))}
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
                 />
               </div>
             </div>
@@ -274,7 +277,7 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
               data-testid="batch-start-button"
               onClick={handleStart}
               disabled={!selectedConfigId}
-              className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center rounded-md bg-accent px-3.5 py-2 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Start batch
             </button>
@@ -286,15 +289,15 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
           <div>
             {/* Overall progress bar */}
             <div className="mb-4">
-              <div className="flex items-center justify-between text-xs text-zinc-500 mb-1">
-                <span>
+              <div className="flex items-center justify-between text-xs text-fg-muted mb-1">
+                <span className="font-mono">
                   {terminal} / {total} replicates
                 </span>
-                <span>{overallPct}%</span>
+                <span className="font-mono">{overallPct}%</span>
               </div>
-              <div className="h-2 rounded-full bg-zinc-200">
+              <div className="h-2 rounded-full bg-surface-muted">
                 <div
-                  className="h-2 rounded-full bg-blue-600 transition-all"
+                  className="h-2 rounded-full bg-accent transition-all"
                   style={{ width: `${overallPct}%` }}
                 />
               </div>
@@ -313,7 +316,7 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
                 <button
                   data-testid="batch-cancel-button"
                   onClick={handleCancel}
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                  className="inline-flex items-center rounded-md px-3.5 py-1.5 text-sm font-medium text-danger hover:bg-danger-bg"
                 >
                   Cancel batch
                 </button>
@@ -322,7 +325,7 @@ export function BatchRunModal({ configs, open, onClose }: BatchRunModalProps) {
                 <button
                   data-testid="batch-close-button"
                   onClick={handleClose}
-                  className="rounded-md bg-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
+                  className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-medium text-fg hover:bg-surface-muted"
                 >
                   Close
                 </button>

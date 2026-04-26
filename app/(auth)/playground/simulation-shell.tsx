@@ -565,7 +565,7 @@ export function SimulationShell({
           data-testid="run-to-completion-button"
           disabled={!ready || isRunning || isRunningToCompletion || !configId}
           onClick={handleRunToCompletion}
-          className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          className="inline-flex items-center rounded-md bg-accent px-3.5 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isRunningToCompletion ? 'Running...' : 'Run to completion'}
         </button>
@@ -573,7 +573,7 @@ export function SimulationShell({
         {!configId && (
           <span className="text-xs text-zinc-400">
             Save a config in{' '}
-            <Link href="/experiments" className="text-blue-500 hover:underline">
+            <Link href="/experiments" className="text-accent hover:underline">
               Experiments
             </Link>{' '}
             to enable run persistence

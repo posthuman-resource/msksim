@@ -29,7 +29,7 @@ export default function LoginForm({ next }: LoginFormProps) {
       <input type="hidden" name="next" value={next} />
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="username" className="text-sm font-medium text-zinc-700">
+        <label htmlFor="username" className="text-sm font-medium text-fg">
           Username
         </label>
         <input
@@ -39,12 +39,12 @@ export default function LoginForm({ next }: LoginFormProps) {
           autoComplete="username"
           required
           aria-describedby={hasError ? 'login-error' : undefined}
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+        <label htmlFor="password" className="text-sm font-medium text-fg">
           Password
         </label>
         <input
@@ -54,7 +54,7 @@ export default function LoginForm({ next }: LoginFormProps) {
           autoComplete="current-password"
           required
           aria-describedby={hasError ? 'login-error' : undefined}
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 
@@ -64,7 +64,7 @@ export default function LoginForm({ next }: LoginFormProps) {
         id="login-error"
         role="alert"
         aria-live="polite"
-        className="min-h-[1.25rem] text-sm text-red-600"
+        className="min-h-[1.25rem] text-sm text-danger"
       >
         {state?.message}
       </p>
@@ -72,7 +72,7 @@ export default function LoginForm({ next }: LoginFormProps) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {pending ? 'Signing in…' : 'Sign in'}
       </button>

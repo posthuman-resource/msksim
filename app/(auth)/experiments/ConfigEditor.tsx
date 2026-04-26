@@ -123,14 +123,14 @@ export function ConfigEditor({
     <form onSubmit={form.handleSubmit(onValidSubmit)} className="space-y-6">
       {/* Edit-mode destructive actions at top */}
       {mode === 'edit' && configId && (
-        <div className="flex gap-2 border-b border-zinc-200 pb-4">
+        <div className="flex gap-2 border-b border-border pb-4">
           <form
             action={duplicateConfigAction.bind(null, configId)}
             onSubmit={(e) => e.stopPropagation()}
           >
             <button
               type="submit"
-              className="rounded bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200"
+              className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-muted"
             >
               Duplicate
             </button>
@@ -146,7 +146,7 @@ export function ConfigEditor({
           >
             <button
               type="submit"
-              className="rounded bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100"
+              className="inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger-bg"
             >
               Delete
             </button>
@@ -156,18 +156,18 @@ export function ConfigEditor({
 
       {/* Config name */}
       <div>
-        <label htmlFor="config-name" className="block text-sm font-medium text-zinc-700">
-          Configuration name <span className="text-red-500">*</span>
+        <label htmlFor="config-name" className="block text-sm font-medium text-fg">
+          Configuration name <span className="text-danger">*</span>
           <HelpTip helpKey="config.name" />
         </label>
         <input
           id="config-name"
           type="text"
           {...form.register('name')}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm focus:border-accent focus:outline-none"
           placeholder="e.g., Baseline 20×20 Lattice"
         />
-        {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
+        {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
       </div>
 
       {/* World configs */}
@@ -195,8 +195,8 @@ export function ConfigEditor({
       </div>
 
       {/* Interaction engine */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Interaction engine <HelpTip helpKey="config.tickCount" />
         </summary>
         <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3">
@@ -295,8 +295,8 @@ export function ConfigEditor({
       </details>
 
       {/* Classification thresholds */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Classification thresholds (α / β / γ / δ){' '}
           <HelpTip helpKey="config.classificationThresholds" />
         </summary>
@@ -341,8 +341,8 @@ export function ConfigEditor({
       </details>
 
       {/* Convergence */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Convergence detection <HelpTip helpKey="config.convergence.consensusWindowTicks" />
         </summary>
         <div className="p-4">
@@ -358,8 +358,8 @@ export function ConfigEditor({
       </details>
 
       {/* Language policies */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Language policies ({policyFields.length} rules){' '}
           <HelpTip helpKey="config.languagePolicies" />
         </summary>
@@ -420,8 +420,8 @@ export function ConfigEditor({
       </details>
 
       {/* Gaussian success policy */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Gaussian success policy <HelpTip helpKey="config.successPolicy.kind" />
         </summary>
         <div className="space-y-4 p-4">
@@ -481,8 +481,8 @@ export function ConfigEditor({
       </details>
 
       {/* Linguistic migration */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Linguistic migration <HelpTip helpKey="config.movement.enabled" />
         </summary>
         <div className="space-y-4 p-4">
@@ -550,8 +550,8 @@ export function ConfigEditor({
       </details>
 
       {/* Preferential attachment */}
-      <details className="rounded-lg border border-zinc-200 bg-white">
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+      <details className="rounded-md border border-border bg-surface">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-fg hover:bg-surface-muted">
           Preferential attachment <HelpTip helpKey="config.preferentialAttachment.enabled" />
         </summary>
         <div className="space-y-4 p-4">
@@ -606,42 +606,42 @@ export function ConfigEditor({
 
       {/* Import error feedback */}
       {importError && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-red-200 bg-danger-bg p-3 text-sm text-danger">
           Import failed: {importError}
         </div>
       )}
 
       {/* Server-level error feedback */}
       {!state.ok && state.fieldErrors._root && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-red-200 bg-danger-bg p-3 text-sm text-danger">
           {state.fieldErrors._root[0]}
         </div>
       )}
 
       {/* Action buttons */}
-      <div className="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4">
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex items-center rounded-md bg-accent px-3.5 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isPending ? 'Saving…' : 'Save'}
         </button>
         <Link
           href="/experiments"
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-medium text-fg hover:bg-surface-muted"
         >
           Cancel
         </Link>
         {mode === 'edit' && configId && (
           <Link
             href={`/api/configs/${configId}/export`}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-medium text-fg hover:bg-surface-muted"
           >
             Export JSON
           </Link>
         )}
-        <label className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
+        <label className="inline-flex cursor-pointer items-center rounded-md border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-medium text-fg hover:bg-surface-muted">
           Import JSON
           <input
             type="file"
@@ -711,8 +711,8 @@ function WorldSection({
   const ratioPath = `${prefix}.monolingualBilingualRatio` as const;
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4">
-      <h2 className="mb-4 text-sm font-semibold text-zinc-800">{label}</h2>
+    <section className="rounded-md border border-border bg-surface p-4">
+      <h2 className="mb-4 font-serif text-lg font-semibold text-fg">{label}</h2>
       <div className="space-y-4">
         {/* Agent count */}
         <div>
@@ -729,7 +729,7 @@ function WorldSection({
             className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
           {worldErrors?.agentCount && (
-            <p className="mt-0.5 text-xs text-red-600">{worldErrors.agentCount.message}</p>
+            <p className="mt-0.5 text-xs text-danger">{worldErrors.agentCount.message}</p>
           )}
         </div>
 
@@ -776,7 +776,7 @@ function WorldSection({
                   <option value="3" />
                 </datalist>
                 {fieldState.error && (
-                  <p className="mt-0.5 text-xs text-red-600">{fieldState.error.message}</p>
+                  <p className="mt-0.5 text-xs text-danger">{fieldState.error.message}</p>
                 )}
               </>
             )}
@@ -872,7 +872,7 @@ function WorldSection({
             placeholder="yellow-like, red-like"
           />
           {worldErrors?.referents && (
-            <p className="mt-0.5 text-xs text-red-600">{worldErrors.referents.message}</p>
+            <p className="mt-0.5 text-xs text-danger">{worldErrors.referents.message}</p>
           )}
         </div>
 
@@ -899,7 +899,7 @@ function WorldSection({
               | { message?: string }
               | undefined;
             return vocabErr ? (
-              <p className="mt-0.5 text-xs text-red-600">{vocabErr.message}</p>
+              <p className="mt-0.5 text-xs text-danger">{vocabErr.message}</p>
             ) : null;
           })()}
         </div>
@@ -945,7 +945,7 @@ function NumberField({ label, path, form, min, max, step, helpKey }: NumberField
         {...form.register(path as any, { valueAsNumber: true })}
         className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
       />
-      {error?.message && <p className="mt-0.5 text-xs text-red-600">{error.message}</p>}
+      {error?.message && <p className="mt-0.5 text-xs text-danger">{error.message}</p>}
     </div>
   );
 }

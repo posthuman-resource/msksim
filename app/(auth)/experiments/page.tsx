@@ -3,6 +3,7 @@ import 'server-only';
 // Experiment configs list page.
 // Replaces the step-07 stub with a Server Component list of all saved configs.
 // verifySession() is called directly per CLAUDE.md 'Authentication patterns'.
+// Layout follows docs/design-system.md §6 (page header, table) and §7 (List archetype).
 
 import Link from 'next/link';
 
@@ -25,12 +26,12 @@ export default async function ExperimentsPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-6xl">
+      <header className="flex items-end justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-xl font-bold text-zinc-900">Experiments</h1>
+          <h1 className="font-serif text-2xl font-semibold text-fg">Experiments</h1>
           {rows.length > 0 && (
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-fg-muted">
               {rows.length} configuration{rows.length !== 1 ? 's' : ''}
             </p>
           )}
@@ -41,45 +42,53 @@ export default async function ExperimentsPage() {
             <Link
               data-testid="sweep-new-link"
               href="/experiments/sweep/new"
-              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-medium text-fg hover:bg-surface-muted"
             >
               New sweep
             </Link>
           )}
           <Link
             href="/experiments/new"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="inline-flex items-center rounded-md bg-accent px-3.5 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             New config
           </Link>
         </div>
-      </div>
+      </header>
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-zinc-200 bg-white p-12 text-center">
-          <p className="text-sm font-medium text-zinc-500">No configurations yet</p>
-          <p className="mt-1 text-sm text-zinc-400">
+        <div className="mt-6 rounded-md border border-dashed border-border bg-surface p-12 text-center">
+          <p className="text-sm font-medium text-fg-muted">No configurations yet</p>
+          <p className="mt-1 text-sm text-fg-subtle">
             Create your first experiment configuration to get started.
           </p>
           <Link
             href="/experiments/new"
-            className="mt-4 inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="mt-4 inline-flex items-center rounded-md bg-accent px-3.5 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent-hover"
           >
             New config
           </Link>
         </div>
       ) : (
-        <div className="rounded-lg bg-white shadow-sm">
-          <table className="w-full">
+        <div className="mt-6 overflow-hidden rounded-md border border-border bg-surface">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium text-zinc-500">
-                <th className="px-4 pb-3 pt-4">Name</th>
-                <th className="pb-3 pr-4 pt-4">Last updated</th>
-                <th className="pb-3 pr-4 pt-4">Hash</th>
-                <th className="pb-3 pr-4 pt-4">Actions</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-fg-muted">
+                  Name
+                </th>
+                <th className="px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-fg-muted">
+                  Last updated
+                </th>
+                <th className="px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-fg-muted">
+                  Hash
+                </th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wide text-fg-muted">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {rows.map((row) => (
                 <ConfigListItem key={row.id} config={row} />
               ))}

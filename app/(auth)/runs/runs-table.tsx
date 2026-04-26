@@ -28,6 +28,10 @@ interface RunsTableProps {
   pagination: { page: number; total: number };
 }
 
+const FILTER_LABEL = 'inline-flex items-center gap-1.5 text-sm text-fg-muted';
+const FILTER_SELECT =
+  'rounded-md border border-border-strong bg-surface px-2 py-1 text-sm text-fg focus:border-accent focus:outline-none';
+
 function FilterBar({
   configs,
   activeSort,
@@ -51,11 +55,11 @@ function FilterBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 mb-4">
-      <label className="text-sm text-zinc-500">
-        Classification:
+    <div className="flex flex-wrap items-center gap-3 mb-3">
+      <label className={FILTER_LABEL}>
+        Classification
         <select
-          className="ml-1 rounded border border-zinc-300 px-2 py-1 text-sm"
+          className={FILTER_SELECT}
           value={searchParams.get('classification') ?? ''}
           onChange={(e) => updateParam('classification', e.target.value)}
         >
@@ -67,10 +71,10 @@ function FilterBar({
         </select>
       </label>
 
-      <label className="text-sm text-zinc-500">
-        Config:
+      <label className={FILTER_LABEL}>
+        Config
         <select
-          className="ml-1 rounded border border-zinc-300 px-2 py-1 text-sm"
+          className={FILTER_SELECT}
           value={searchParams.get('configId') ?? ''}
           onChange={(e) => updateParam('configId', e.target.value)}
         >
@@ -83,10 +87,10 @@ function FilterBar({
         </select>
       </label>
 
-      <label className="text-sm text-zinc-500">
-        Sort:
+      <label className={FILTER_LABEL}>
+        Sort
         <select
-          className="ml-1 rounded border border-zinc-300 px-2 py-1 text-sm"
+          className={FILTER_SELECT}
           value={activeSort}
           onChange={(e) => updateParam('orderBy', e.target.value)}
         >
@@ -104,7 +108,7 @@ function DeleteButton({ id }: { id: string }) {
   return (
     <button
       disabled={isPending}
-      className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50"
+      className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger-bg disabled:opacity-50"
       onClick={() => {
         if (!window.confirm('Delete this run? This cannot be undone.')) return;
         startTransition(async () => {
@@ -112,7 +116,7 @@ function DeleteButton({ id }: { id: string }) {
         });
       }}
     >
-      {isPending ? 'Deleting...' : 'Delete'}
+      {isPending ? 'Deleting…' : 'Delete'}
     </button>
   );
 }
@@ -134,87 +138,108 @@ export function RunsTable({ rows, configs, activeSort, pagination }: RunsTablePr
     <div>
       <FilterBar configs={configs} activeSort={activeSort} />
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-zinc-500">
-              <th className="px-3 py-2 font-medium">ID</th>
-              <th className="px-3 py-2 font-medium">Config</th>
-              <th className="px-3 py-2 font-medium">Seed</th>
-              <th className="px-3 py-2 font-medium">Ticks</th>
-              <th className="px-3 py-2 font-medium">
-                Classification
-                <HelpTip helpKey="runs.classification" />
-              </th>
-              <th className="px-3 py-2 font-medium">Finished</th>
-              <th className="px-3 py-2 font-medium">
-                Duration
-                <HelpTip helpKey="runs.duration" />
-              </th>
-              <th className="px-3 py-2 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody data-testid="runs-table-body">
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-zinc-400">
-                  No runs found.
-                </td>
+      <div className="overflow-hidden rounded-md border border-border bg-surface">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                {[
+                  'ID',
+                  'Config',
+                  'Seed',
+                  'Ticks',
+                  'Classification',
+                  'Finished',
+                  'Duration',
+                  'Actions',
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-fg-muted"
+                  >
+                    {h === 'Classification' ? (
+                      <>
+                        Classification
+                        <HelpTip helpKey="runs.classification" />
+                      </>
+                    ) : h === 'Duration' ? (
+                      <>
+                        Duration
+                        <HelpTip helpKey="runs.duration" />
+                      </>
+                    ) : (
+                      h
+                    )}
+                  </th>
+                ))}
               </tr>
-            )}
-            {rows.map((row) => {
-              const cls = formatClassificationLabel(row.classification);
-              return (
-                <tr key={row.id} className="border-b border-zinc-100 hover:bg-zinc-50">
-                  <td className="px-3 py-2 font-mono text-xs">{row.shortId}</td>
-                  <td className="px-3 py-2">{row.configName}</td>
-                  <td className="px-3 py-2 font-mono">{row.seed}</td>
-                  <td className="px-3 py-2">{row.tickCount}</td>
-                  <td className="px-3 py-2">
-                    <span
-                      className="inline-block rounded px-2 py-0.5 text-xs font-semibold text-white"
-                      style={{ backgroundColor: cls.color }}
-                    >
-                      {cls.label}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs">{row.finishedAt ?? '-'}</td>
-                  <td className="px-3 py-2 text-xs">
-                    {row.durationSeconds != null ? `${row.durationSeconds.toFixed(1)}s` : '-'}
-                  </td>
-                  <td className="px-3 py-2 flex gap-2">
-                    <Link
-                      href={`/runs/${row.id}`}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      View
-                    </Link>
-                    <DeleteButton id={row.id} />
+            </thead>
+            <tbody data-testid="runs-table-body" className="divide-y divide-border">
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-3 py-8 text-center text-fg-subtle">
+                    No runs found.
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              {rows.map((row) => {
+                const cls = formatClassificationLabel(row.classification);
+                return (
+                  <tr key={row.id} className="hover:bg-surface-muted">
+                    <td className="px-3 py-2 font-mono text-xs text-fg-muted">{row.shortId}</td>
+                    <td className="px-3 py-2 text-fg">{row.configName}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-fg-muted">{row.seed}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-fg-muted">{row.tickCount}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
+                        style={{ borderColor: cls.color, color: cls.color }}
+                      >
+                        {cls.label}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-fg-muted">
+                      {row.finishedAt ?? '—'}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-fg-muted">
+                      {row.durationSeconds != null ? `${row.durationSeconds.toFixed(1)}s` : '—'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-start gap-1">
+                        <Link
+                          href={`/runs/${row.id}`}
+                          className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-fg-muted hover:bg-surface-muted hover:text-fg"
+                        >
+                          View
+                        </Link>
+                        <DeleteButton id={row.id} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-zinc-500">
-          <span>
-            Showing {pagination.page * 50 + 1}–
-            {Math.min((pagination.page + 1) * 50, pagination.total)} of {pagination.total}
+        <div className="mt-4 flex items-center justify-between text-sm text-fg-muted">
+          <span className="font-mono text-xs">
+            {pagination.page * 50 + 1}–{Math.min((pagination.page + 1) * 50, pagination.total)} of{' '}
+            {pagination.total}
           </span>
           <div className="flex gap-2">
             <button
               disabled={pagination.page === 0}
-              className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-50"
+              className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3 py-1 text-sm text-fg hover:bg-surface-muted disabled:opacity-50"
               onClick={() => goToPage(pagination.page - 1)}
             >
               Previous
             </button>
             <button
               disabled={pagination.page >= totalPages - 1}
-              className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-50"
+              className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3 py-1 text-sm text-fg hover:bg-surface-muted disabled:opacity-50"
               onClick={() => goToPage(pagination.page + 1)}
             >
               Next

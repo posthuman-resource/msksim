@@ -203,7 +203,7 @@ export function ControlsPanel({
           data-testid="play-pause-button"
           onClick={isRunning ? onPause : onPlay}
           disabled={!ready}
-          className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+          className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-40"
         >
           {isRunning ? 'Pause' : 'Play'}
         </button>

@@ -67,7 +67,7 @@ export function ProjectionToggle({
             className={[
               'rounded px-3 py-1 text-sm font-medium transition-colors',
               projectionKind === kind
-                ? 'bg-blue-500 text-white'
+                ? 'bg-accent text-accent-fg'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
             ].join(' ')}
           >

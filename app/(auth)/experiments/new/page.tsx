@@ -3,6 +3,7 @@ import 'server-only';
 // New experiment config page.
 // Renders an empty ConfigEditor seeded from ExperimentConfig.parse({}) defaults.
 // verifySession() is called directly per CLAUDE.md 'Authentication patterns'.
+// Page archetype: Form (docs/design-system.md §7).
 
 import type { Metadata } from 'next';
 
@@ -18,14 +19,14 @@ export default async function NewConfigPage() {
   const defaults = ExperimentConfig.parse({});
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-900">New configuration</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <div className="mx-auto max-w-6xl">
+      <header className="border-b border-border pb-4">
+        <h1 className="font-serif text-2xl font-semibold text-fg">New configuration</h1>
+        <p className="mt-1 text-sm text-fg-muted">
           Fill in the fields below and click Save to create a new experiment configuration.
         </p>
-      </div>
-      <div className="rounded-lg bg-white p-6 shadow-sm">
+      </header>
+      <div className="mt-6 rounded-md border border-border bg-surface p-6">
         <ConfigEditor mode="new" initialValues={defaults} />
       </div>
     </div>

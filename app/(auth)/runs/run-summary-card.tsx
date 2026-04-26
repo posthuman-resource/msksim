@@ -26,18 +26,18 @@ export function RunSummaryCard({
   const cls = formatClassificationLabel(classification);
 
   return (
-    <div data-testid="run-summary-card" className="rounded-lg bg-white p-4 shadow-sm">
-      <h2 className="text-lg font-semibold text-zinc-900 mb-3">Run Summary</h2>
+    <div data-testid="run-summary-card" className="rounded-md border border-border bg-surface p-4">
+      <h2 className="font-serif text-lg font-semibold text-fg mb-3">Run summary</h2>
 
-      <div className="flex flex-wrap gap-4 mb-4">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-500">
-            Classification:
+          <span className="text-xs uppercase tracking-wide text-fg-muted">
+            Classification
             <HelpTip helpKey="run.classification" />
           </span>
           <span
-            className="inline-block rounded px-2 py-0.5 text-xs font-semibold text-white"
-            style={{ backgroundColor: cls.color }}
+            className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
+            style={{ borderColor: cls.color, color: cls.color }}
           >
             {cls.label}
           </span>
@@ -46,23 +46,23 @@ export function RunSummaryCard({
         {summary && (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-zinc-500">
-                Convergence:
+              <span className="text-xs uppercase tracking-wide text-fg-muted">
+                Convergence
                 <HelpTip helpKey="run.convergence" />
               </span>
-              <span className="text-sm font-medium text-zinc-800">
+              <span className="text-sm font-medium text-fg">
                 {convergenceLabel(summary.convergenceStatus)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-zinc-500">
-                Time to consensus:
+              <span className="text-xs uppercase tracking-wide text-fg-muted">
+                Time to consensus
                 <HelpTip helpKey="run.timeToConsensus" />
               </span>
-              <span className="text-sm font-medium text-zinc-800">
+              <span className="text-sm font-medium font-mono text-fg">
                 {summary.timeToConsensus !== null
-                  ? `Tick ${summary.timeToConsensus}`
-                  : 'Not reached'}
+                  ? `tick ${summary.timeToConsensus}`
+                  : 'not reached'}
               </span>
             </div>
           </>
@@ -70,13 +70,13 @@ export function RunSummaryCard({
       </div>
 
       {summary && Object.keys(summary.meanMetrics).length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 border-t border-border pt-3">
           {Object.entries(summary.meanMetrics)
             .slice(0, 6)
             .map(([key, val]) => (
-              <div key={key} className="text-sm">
-                <span className="text-zinc-500">{key}: </span>
-                <span className="font-medium text-zinc-800">
+              <div key={key} className="flex items-baseline justify-between text-sm">
+                <span className="text-fg-muted">{key}</span>
+                <span className="font-mono text-fg">
                   {typeof val === 'number' && Number.isFinite(val) ? val.toFixed(4) : 'N/A'}
                 </span>
               </div>
@@ -84,7 +84,7 @@ export function RunSummaryCard({
         </div>
       )}
 
-      {!summary && <p className="text-sm text-zinc-500">Summary not available.</p>}
+      {!summary && <p className="text-sm text-fg-muted">Summary not available.</p>}
     </div>
   );
 }

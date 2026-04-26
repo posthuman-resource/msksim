@@ -4,6 +4,7 @@ import 'server-only';
 // Fetches the config row by id and hydrates the ConfigEditor with existing values.
 // verifySession() is called directly per CLAUDE.md 'Authentication patterns'.
 // params is awaited per CLAUDE.md 'Known gotchas' (Next 16 async params).
+// Page archetype: Form (docs/design-system.md §7).
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -34,16 +35,16 @@ export default async function EditConfigPage({ params }: EditConfigPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-900">Edit configuration</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs text-zinc-600">
+    <div className="mx-auto max-w-6xl">
+      <header className="border-b border-border pb-4">
+        <h1 className="font-serif text-2xl font-semibold text-fg">Edit configuration</h1>
+        <p className="mt-1 text-sm text-fg-muted">
+          <code className="font-mono text-xs text-fg-muted">
             {result.row.contentHash.slice(0, 8)}
           </code>
         </p>
-      </div>
-      <div className="rounded-lg bg-white p-6 shadow-sm">
+      </header>
+      <div className="mt-6 rounded-md border border-border bg-surface p-6">
         <ConfigEditor
           mode="edit"
           configId={result.row.id}

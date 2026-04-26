@@ -16,41 +16,46 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
 
 export function ConfigListItem({ config }: ConfigListItemProps) {
   return (
-    <tr className="border-b border-zinc-100 hover:bg-zinc-50">
-      <td className="py-3 pr-4">
-        <Link
-          href={`/experiments/${config.id}`}
-          className="font-medium text-zinc-900 hover:text-blue-600"
-        >
+    <tr className="hover:bg-surface-muted">
+      <td className="px-4 py-2.5">
+        <Link href={`/experiments/${config.id}`} className="font-medium text-fg hover:text-accent">
           {config.name}
         </Link>
       </td>
-      <td className="py-3 pr-4 text-sm text-zinc-500">
+      <td className="px-4 py-2.5 font-mono text-xs text-fg-muted">
         {dateFormatter.format(new Date(config.updatedAt))}
       </td>
-      <td className="py-3 pr-4">
-        <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-mono text-zinc-600">
-          {config.contentHash.slice(0, 8)}
-        </code>
+      <td className="px-4 py-2.5 font-mono text-xs text-fg-muted">
+        {config.contentHash.slice(0, 8)}
       </td>
-      <td className="py-3">
-        <div className="flex items-center gap-2">
+      <td className="px-4 py-2.5 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Link
+            href={`/playground?configId=${config.id}`}
+            className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-fg-muted hover:bg-surface-muted hover:text-fg"
+          >
+            Run
+          </Link>
           <Link
             href={`/experiments/${config.id}`}
-            className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+            className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-fg-muted hover:bg-surface-muted hover:text-fg"
           >
             Edit
           </Link>
-
           <form action={duplicateConfigAction.bind(null, config.id)}>
             <button
               type="submit"
-              className="rounded px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100"
+              className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-fg-muted hover:bg-surface-muted hover:text-fg"
             >
               Duplicate
             </button>
           </form>
-
+          <Link
+            href={`/api/configs/${config.id}/export`}
+            className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-fg-muted hover:bg-surface-muted hover:text-fg"
+          >
+            Export
+          </Link>
           <form
             action={deleteConfigAction.bind(null, config.id)}
             onSubmit={(e) => {
@@ -61,25 +66,11 @@ export function ConfigListItem({ config }: ConfigListItemProps) {
           >
             <button
               type="submit"
-              className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+              className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger-bg"
             >
               Delete
             </button>
           </form>
-
-          <Link
-            href={`/playground?configId=${config.id}`}
-            className="rounded px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50"
-          >
-            Run
-          </Link>
-
-          <Link
-            href={`/api/configs/${config.id}/export`}
-            className="rounded px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100"
-          >
-            Export
-          </Link>
         </div>
       </td>
     </tr>

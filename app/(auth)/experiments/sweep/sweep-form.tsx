@@ -225,175 +225,187 @@ export function SweepForm({ configs, initialConfigId }: SweepFormProps) {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div data-testid="sweep-form" className="mx-auto max-w-5xl space-y-6 pb-12">
-      <div className="flex items-center justify-between">
+    <div data-testid="sweep-form" className="mx-auto max-w-6xl pb-12">
+      <header className="flex items-end justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-xl font-bold text-zinc-900">Parameter sweep</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="font-serif text-2xl font-semibold text-fg">Parameter sweep</h1>
+          <p className="mt-1 text-sm text-fg-muted">
             Vary 1–3 parameters across a grid of values; each cell runs N replicates through the
             batch queue.
           </p>
         </div>
-        <span data-testid="sweep-phase" className="text-sm font-medium text-zinc-500">
+        <span
+          data-testid="sweep-phase"
+          className="text-xs font-medium uppercase tracking-wide text-fg-muted"
+        >
           {sweepState.phase}
         </span>
-      </div>
+      </header>
 
-      {sweepState.phase === 'idle' && (
-        <div className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700">Base configuration</label>
-            <select
-              data-testid="sweep-config-select"
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              value={selectedConfigId}
-              onChange={(e) => setSelectedConfigId(e.target.value)}
-            >
-              {configs.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="block text-sm font-medium text-zinc-700">
-                Sweep parameters ({rows.length}/3)
-              </label>
-              <button
-                data-testid="sweep-add-parameter"
-                onClick={addRow}
-                disabled={rows.length >= 3}
-                className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 disabled:opacity-50"
-              >
-                Add parameter
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {rows.map((row, rowIndex) => (
-                <ParameterRow
-                  key={row.rowId}
-                  rowIndex={rowIndex}
-                  row={row}
-                  usedPaths={usedPaths}
-                  onUpdate={(patch) => updateRow(row.rowId, patch)}
-                  onRemove={() => removeRow(row.rowId)}
-                  canRemove={rows.length > 1}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
+      <div className="mt-6 space-y-6">
+        {sweepState.phase === 'idle' && (
+          <div className="space-y-6 rounded-md border border-border bg-surface p-6">
             <div>
-              <label className="block text-sm font-medium text-zinc-700">Replicates per cell</label>
-              <input
-                data-testid="sweep-replicates"
-                type="number"
-                min={1}
-                max={30}
-                value={replicatesPerCell}
-                onChange={(e) =>
-                  setReplicatesPerCell(Math.max(1, Math.min(30, Number(e.target.value) || 1)))
-                }
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700">Total ticks</label>
-              <input
-                data-testid="sweep-total-ticks"
-                type="number"
-                min={1}
-                value={totalTicks}
-                onChange={(e) => setTotalTicks(Math.max(1, Number(e.target.value) || 50))}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700">Concurrency</label>
-              <input
-                data-testid="sweep-concurrency"
-                type="number"
-                min={1}
-                max={8}
-                value={concurrency}
-                onChange={(e) =>
-                  setConcurrency(Math.max(1, Math.min(8, Number(e.target.value) || 1)))
-                }
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-md bg-zinc-50 px-4 py-3">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-zinc-500">Total runs</div>
-              <div data-testid="sweep-total-runs" className="text-lg font-semibold text-zinc-900">
-                {totalCells} cells × {replicatesPerCell} replicates = {totalRuns}
-              </div>
-            </div>
-            {totalRuns > 500 && (
-              <div
-                data-testid="sweep-large-warning"
-                className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
-              >
-                Warning: {totalRuns} runs exceeds the 500-run guardrail.
-              </div>
-            )}
-          </div>
-
-          <button
-            data-testid="sweep-start-button"
-            onClick={handleStart}
-            disabled={!selectedConfigId || picks.length === 0 || totalRuns === 0}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            Start sweep
-          </button>
-        </div>
-      )}
-
-      {(isRunning || isTerminal) && <SweepProgress sweepState={sweepState} totalRuns={totalRuns} />}
-
-      {isRunning && (
-        <div className="flex justify-end">
-          <button
-            data-testid="sweep-cancel-button"
-            onClick={handleCancel}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-          >
-            Cancel sweep
-          </button>
-        </div>
-      )}
-
-      {isTerminal && (
-        <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-zinc-900">Results</h2>
-            <div>
-              <label className="mr-2 text-sm text-zinc-600">Metric:</label>
+              <label className="block text-sm font-medium text-fg">Base configuration</label>
               <select
-                data-testid="sweep-metric-select"
-                className="rounded-md border border-zinc-300 px-2 py-1 text-sm"
-                value={outcomeMetric}
-                onChange={(e) => setOutcomeMetric(e.target.value)}
+                data-testid="sweep-config-select"
+                className="mt-1 w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm focus:border-accent focus:outline-none"
+                value={selectedConfigId}
+                onChange={(e) => setSelectedConfigId(e.target.value)}
               >
-                {outcomeMetricOptions.map((o) => (
-                  <option key={o.selector} value={o.selector}>
-                    {o.label}
+                {configs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
                   </option>
                 ))}
               </select>
             </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm font-medium text-fg">
+                  Sweep parameters ({rows.length}/3)
+                </label>
+                <button
+                  data-testid="sweep-add-parameter"
+                  onClick={addRow}
+                  disabled={rows.length >= 3}
+                  className="inline-flex items-center rounded-md border border-border-strong bg-surface px-3 py-1 text-xs font-medium text-fg hover:bg-surface-muted disabled:opacity-50"
+                >
+                  Add parameter
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {rows.map((row, rowIndex) => (
+                  <ParameterRow
+                    key={row.rowId}
+                    rowIndex={rowIndex}
+                    row={row}
+                    usedPaths={usedPaths}
+                    onUpdate={(patch) => updateRow(row.rowId, patch)}
+                    onRemove={() => removeRow(row.rowId)}
+                    canRemove={rows.length > 1}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-700">
+                  Replicates per cell
+                </label>
+                <input
+                  data-testid="sweep-replicates"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={replicatesPerCell}
+                  onChange={(e) =>
+                    setReplicatesPerCell(Math.max(1, Math.min(30, Number(e.target.value) || 1)))
+                  }
+                  className="mt-1 w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-700">Total ticks</label>
+                <input
+                  data-testid="sweep-total-ticks"
+                  type="number"
+                  min={1}
+                  value={totalTicks}
+                  onChange={(e) => setTotalTicks(Math.max(1, Number(e.target.value) || 50))}
+                  className="mt-1 w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-700">Concurrency</label>
+                <input
+                  data-testid="sweep-concurrency"
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={concurrency}
+                  onChange={(e) =>
+                    setConcurrency(Math.max(1, Math.min(8, Number(e.target.value) || 1)))
+                  }
+                  className="mt-1 w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border border-border bg-surface-muted px-4 py-3">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-fg-muted">Total runs</div>
+                <div
+                  data-testid="sweep-total-runs"
+                  className="font-mono text-lg font-semibold text-fg"
+                >
+                  {totalCells} cells × {replicatesPerCell} replicates = {totalRuns}
+                </div>
+              </div>
+              {totalRuns > 500 && (
+                <div
+                  data-testid="sweep-large-warning"
+                  className="rounded-md border border-red-200 bg-danger-bg px-3 py-2 text-xs font-medium text-danger"
+                >
+                  Warning: {totalRuns} runs exceeds the 500-run guardrail.
+                </div>
+              )}
+            </div>
+
+            <button
+              data-testid="sweep-start-button"
+              onClick={handleStart}
+              disabled={!selectedConfigId || picks.length === 0 || totalRuns === 0}
+              className="w-full inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Start sweep
+            </button>
           </div>
-          <Heatmap parameterPicks={picks} aggregates={aggregates} metricLabel={metricLabel} />
-        </div>
-      )}
+        )}
+
+        {(isRunning || isTerminal) && (
+          <SweepProgress sweepState={sweepState} totalRuns={totalRuns} />
+        )}
+
+        {isRunning && (
+          <div className="flex justify-end">
+            <button
+              data-testid="sweep-cancel-button"
+              onClick={handleCancel}
+              className="inline-flex items-center rounded-md px-3.5 py-1.5 text-sm font-medium text-danger hover:bg-danger-bg"
+            >
+              Cancel sweep
+            </button>
+          </div>
+        )}
+
+        {isTerminal && (
+          <div className="space-y-4 rounded-md border border-border bg-surface p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-serif text-lg font-semibold text-fg">Results</h2>
+              <div>
+                <label className="mr-2 text-sm text-fg-muted">Metric</label>
+                <select
+                  data-testid="sweep-metric-select"
+                  className="rounded-md border border-border-strong bg-surface px-2 py-1 text-sm focus:border-accent focus:outline-none"
+                  value={outcomeMetric}
+                  onChange={(e) => setOutcomeMetric(e.target.value)}
+                >
+                  {outcomeMetricOptions.map((o) => (
+                    <option key={o.selector} value={o.selector}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <Heatmap parameterPicks={picks} aggregates={aggregates} metricLabel={metricLabel} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -423,12 +435,12 @@ function ParameterRow({
   return (
     <div
       data-testid={`sweep-param-row-${rowIndex}`}
-      className="rounded-md border border-zinc-200 bg-zinc-50 p-3"
+      className="rounded-md border border-border bg-surface-muted p-3"
     >
       <div className="flex items-center gap-2">
         <select
           data-testid={`sweep-param-path-${rowIndex}`}
-          className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm"
+          className="flex-1 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm focus:border-accent focus:outline-none"
           value={row.path ?? ''}
           onChange={(e) => {
             const newPath = e.target.value || null;
@@ -451,7 +463,7 @@ function ParameterRow({
           <button
             data-testid={`sweep-param-remove-${rowIndex}`}
             onClick={onRemove}
-            className="rounded-md bg-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-300"
+            className="inline-flex items-center rounded-md border border-border-strong bg-surface px-2 py-1 text-xs font-medium text-fg hover:bg-surface-muted"
             aria-label="Remove parameter"
           >
             Remove
@@ -459,22 +471,22 @@ function ParameterRow({
         )}
       </div>
 
-      {entry && <p className="mt-1 text-xs text-zinc-500">{entry.description}</p>}
+      {entry && <p className="mt-1 text-xs text-fg-muted">{entry.description}</p>}
 
       {entry?.kind.kind === 'number' && (
         <div className="mt-2">
-          <label className="block text-xs font-medium text-zinc-700">
+          <label className="block text-xs font-medium text-fg">
             Values (comma-separated, or start:stop:step)
           </label>
           <input
             data-testid={`sweep-param-values-${rowIndex}`}
             type="text"
             placeholder="e.g. 0.3, 0.6  or  0.1:0.5:0.1"
-            className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm"
+            className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1 font-mono text-sm focus:border-accent focus:outline-none"
             value={row.numericText}
             onChange={(e) => onUpdate({ numericText: e.target.value })}
           />
-          <div className="mt-1 text-xs text-zinc-500">
+          <div className="mt-1 font-mono text-xs text-fg-muted">
             Parsed: [{parseNumericValues(row.numericText).join(', ') || '—'}]
           </div>
         </div>
@@ -546,15 +558,15 @@ function SweepProgress({ sweepState, totalRuns }: { sweepState: SweepState; tota
   const pct = denom > 0 ? Math.round((completedReplicates / denom) * 100) : 0;
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4" data-testid="sweep-progress">
-      <div className="mb-2 flex items-center justify-between text-sm text-zinc-600">
-        <span>
+    <div className="rounded-md border border-border bg-surface p-4" data-testid="sweep-progress">
+      <div className="mb-2 flex items-center justify-between text-sm text-fg-muted">
+        <span className="font-mono text-xs">
           {completedReplicates} / {denom} replicates terminal
         </span>
-        <span>{pct}%</span>
+        <span className="font-mono text-xs">{pct}%</span>
       </div>
-      <div className="h-2 rounded-full bg-zinc-200">
-        <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${pct}%` }} />
+      <div className="h-2 rounded-full bg-surface-muted">
+        <div className="h-2 rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
@@ -564,16 +576,18 @@ function SweepProgress({ sweepState, totalRuns }: { sweepState: SweepState; tota
             data-testid={`sweep-cell-${c.cellIndex}`}
             className={`rounded-md border p-2 text-xs ${
               c.status === 'completed'
-                ? 'border-green-300 bg-green-50 text-green-700'
+                ? 'border-green-200 bg-success-bg text-success'
                 : c.status === 'running'
-                  ? 'border-blue-300 bg-blue-50 text-blue-700'
+                  ? 'border-indigo-200 bg-accent-soft text-accent'
                   : c.status === 'cancelled'
-                    ? 'border-amber-300 bg-amber-50 text-amber-700'
-                    : 'border-zinc-200 bg-zinc-50 text-zinc-500'
+                    ? 'border-amber-200 bg-warn-bg text-warn'
+                    : 'border-border bg-surface-muted text-fg-muted'
             }`}
           >
-            <div className="font-medium">cell {c.cellIndex}</div>
-            <div className="truncate">{c.parameterValues.map((v) => String(v)).join(', ')}</div>
+            <div className="font-medium font-mono">cell {c.cellIndex}</div>
+            <div className="truncate font-mono">
+              {c.parameterValues.map((v) => String(v)).join(', ')}
+            </div>
             <div className="mt-1">{c.status}</div>
           </div>
         ))}
