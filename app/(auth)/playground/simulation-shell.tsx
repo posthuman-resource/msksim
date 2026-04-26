@@ -43,7 +43,20 @@ import { tokenToColor } from './colors';
 import { createMetricsHistory, appendTick } from './metrics-history';
 import type { MetricsHistory } from './metrics-history';
 import { MetricsDashboard } from './metrics-dashboard';
-import { NetworkView } from './network-view';
+// NetworkView is lazy-loaded so sigma's WebGL imports never evaluate during
+// the RSC compile graph. Without this, Turbopack occasionally ignores the
+// 'use client' directive on the module (see network-view.tsx) and triggers
+// `ReferenceError: WebGL2RenderingContext is not defined` at module-scope
+// evaluation time, returning HTTP 500 for /playground.
+import dynamic from 'next/dynamic';
+const NetworkView = dynamic(() => import('./network-view').then((m) => m.NetworkView), {
+  ssr: false,
+  loading: () => (
+    <div className="flex min-h-[300px] items-center justify-center text-sm text-zinc-400">
+      Loading network…
+    </div>
+  ),
+});
 import { ControlsPanel } from './controls-panel';
 import { computeConfigHashShort } from './config-hash';
 import { persistCompletedRun, loadConfigAction } from './actions';

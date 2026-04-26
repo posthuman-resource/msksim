@@ -56,24 +56,27 @@ export function ProjectionToggle({
 }: ProjectionToggleProps) {
   return (
     <div className="flex flex-col gap-2">
-      {/* Projection buttons */}
+      {/* Projection buttons. HelpTip is a sibling, not a child — nesting a
+          <button> inside a <button> is invalid HTML and triggers a hydration
+          error in React 19. */}
       <div className="flex gap-1" role="group" aria-label="Projection kind">
         {KINDS.map(({ kind, label, testId, helpKey }) => (
-          <button
-            key={kind}
-            data-testid={testId}
-            aria-pressed={projectionKind === kind}
-            onClick={() => onChange(kind)}
-            className={[
-              'rounded px-3 py-1 text-sm font-medium transition-colors',
-              projectionKind === kind
-                ? 'bg-accent text-accent-fg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
-            ].join(' ')}
-          >
-            {label}
+          <span key={kind} className="inline-flex items-center">
+            <button
+              data-testid={testId}
+              aria-pressed={projectionKind === kind}
+              onClick={() => onChange(kind)}
+              className={[
+                'rounded px-3 py-1 text-sm font-medium transition-colors',
+                projectionKind === kind
+                  ? 'bg-accent text-accent-fg'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
+              ].join(' ')}
+            >
+              {label}
+            </button>
             <HelpTip helpKey={helpKey} variant="dark" />
-          </button>
+          </span>
         ))}
       </div>
 
