@@ -419,6 +419,136 @@ export function ConfigEditor({
         </div>
       </details>
 
+      {/* Gaussian success policy */}
+      <details className="rounded-lg border border-zinc-200 bg-white">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+          Gaussian success policy <HelpTip helpKey="config.successPolicy.kind" />
+        </summary>
+        <div className="space-y-4 p-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-600">
+              Success rule kind
+              <HelpTip helpKey="config.successPolicy.kind" />
+            </label>
+            <select
+              {...form.register('successPolicy.kind', {
+                onChange: (e) => {
+                  if (e.target.value === 'gaussian') {
+                    // Discriminated-union seed: deterministic mode strips sigma/topK
+                    // when Zod-parsed, so they may be absent on switch-to-gaussian.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const sp = form.getValues('successPolicy' as any) as
+                      | { sigma?: number; gaussianTopK?: number }
+                      | undefined;
+                    if (sp?.sigma === undefined) {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      form.setValue('successPolicy.sigma' as any, 1.0);
+                    }
+                    if (sp?.gaussianTopK === undefined) {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      form.setValue('successPolicy.gaussianTopK' as any, 10);
+                    }
+                  }
+                },
+              })}
+              className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            >
+              <option value="deterministic">Deterministic (canonical Naming Game)</option>
+              <option value="gaussian">Gaussian (probabilistic)</option>
+            </select>
+          </div>
+          {form.watch('successPolicy.kind') === 'gaussian' && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <NumberField
+                label="σ (kernel width)"
+                path="successPolicy.sigma"
+                form={form}
+                min={0.01}
+                step={0.01}
+                helpKey="config.successPolicy.sigma"
+              />
+              <NumberField
+                label="Top-K tokens for distance"
+                path="successPolicy.gaussianTopK"
+                form={form}
+                min={1}
+                step={1}
+                helpKey="config.successPolicy.gaussianTopK"
+              />
+            </div>
+          )}
+        </div>
+      </details>
+
+      {/* Linguistic migration */}
+      <details className="rounded-lg border border-zinc-200 bg-white">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+          Linguistic migration <HelpTip helpKey="config.movement.enabled" />
+        </summary>
+        <div className="space-y-4 p-4">
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              {...form.register('movement.enabled')}
+              className="h-4 w-4 rounded border-zinc-300"
+            />
+            Enabled (lattice topology only — no effect on well-mixed or network)
+          </label>
+          {form.watch('movement.enabled') && (
+            <div className="space-y-4">
+              <NumberField
+                label="Attract threshold (cosine similarity)"
+                path="movement.attractThreshold"
+                form={form}
+                min={0}
+                max={1}
+                step={0.01}
+                helpKey="config.movement.attractThreshold"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <NumberField
+                  label="Attract step (cells)"
+                  path="movement.attractStep"
+                  form={form}
+                  min={0}
+                  step={1}
+                  helpKey="config.movement.attractStep"
+                />
+                <NumberField
+                  label="Repel step (cells)"
+                  path="movement.repelStep"
+                  form={form}
+                  min={0}
+                  step={1}
+                  helpKey="config.movement.repelStep"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Collision policy
+                  <HelpTip helpKey="config.movement.collisionPolicy" />
+                </label>
+                <select
+                  {...form.register('movement.collisionPolicy')}
+                  className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="swap">Swap (Schelling-style)</option>
+                  <option value="skip">Skip (cancel move)</option>
+                </select>
+              </div>
+              <NumberField
+                label="Top-K tokens for similarity"
+                path="movement.topK"
+                form={form}
+                min={1}
+                step={1}
+                helpKey="config.movement.topK"
+              />
+            </div>
+          )}
+        </div>
+      </details>
+
       {/* Preferential attachment */}
       <details className="rounded-lg border border-zinc-200 bg-white">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50">

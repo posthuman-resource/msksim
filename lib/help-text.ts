@@ -90,6 +90,35 @@ export const helpText: Record<string, string> = {
   'config.languagePolicies':
     'Rules governing which language a speaker uses with each hearer class. Most are fixed (e.g., monolinguals always use their language). "Configurable" rules have adjustable L1/L2 bias — higher L1 bias means bilinguals prefer L1 more often, which promotes segregation. Equal bias (0.5) gives an unbiased coin flip.',
 
+  // ── Success policy (post-v1, step 33) ─────────────────────────────────
+  'config.successPolicy.kind':
+    "Communication success rule. Deterministic (default): success requires the hearer to know the speaker's exact token for the same referent — sharp binary outcome. Gaussian: success is a smooth probability based on how similar the two agents' overall token-weight vectors are. Use deterministic for the canonical Naming Game; use Gaussian to study how vocabulary tolerance affects consensus.",
+
+  'config.successPolicy.sigma':
+    'Kernel width σ for the Gaussian success rule. The success probability is Ps = exp(-‖xi - xj‖² / (2σ²)). Higher σ widens the curve — agents tolerate larger linguistic differences before communication fails. Lower σ sharpens the curve — only very similar token weights succeed. Try sweeping σ from 0.1 to 5.0. Default: 1.0.',
+
+  'config.successPolicy.gaussianTopK':
+    "Number of top-weighted tokens used to build each agent's linguistic state vector for the Gaussian distance computation. Higher K = more nuanced similarity; lower K = focuses only on agents' dominant vocabulary. Default: 10 (matches preferential attachment).",
+
+  // ── Linguistic migration (post-v1, step 34) ───────────────────────────
+  'config.movement.enabled':
+    'Enable Schelling-style spatial migration. After each successful interaction, agents on a lattice may step toward (high vocabulary similarity) or away from (low similarity) their interaction partner. Default: off (preserves canonical Naming Game). Lattice topology only — has no effect on well-mixed or network worlds.',
+
+  'config.movement.attractThreshold':
+    'Cosine-similarity threshold (between 0 and 1) above which agents move toward each other after an interaction, and below which they move away. Default: 0.5 — borderline indifferent. Lower thresholds (e.g. 0.3) make agents more eager to cluster; higher thresholds (e.g. 0.7) make them more eager to disperse.',
+
+  'config.movement.attractStep':
+    'Number of lattice cells to step toward the partner when the cosine similarity is above the attract threshold. Default: 1 (one cell). Set to 0 to disable attractive movement entirely.',
+
+  'config.movement.repelStep':
+    'Number of lattice cells to step away from the partner when the cosine similarity is below the attract threshold. Default: 2 (two cells, asymmetric — repulsion is stronger than attraction, matching the original PDF prescription). Set to 0 to disable repulsive movement.',
+
+  'config.movement.collisionPolicy':
+    'What happens when an agent tries to step into a cell already occupied. Swap: trade positions with the occupant (preserves cell-occupancy, produces clean Schelling dynamics). Skip: cancel the move (silently reduces migration rate when the lattice is dense). Default: swap.',
+
+  'config.movement.topK':
+    "Number of top-weighted tokens used to build each agent's vector for the cosine-similarity computation that drives movement decisions. Default: 10 (matches preferential attachment and the Gaussian success policy).",
+
   // ── Preferential attachment ───────────────────────────────────────────
   'config.preferentialAttachment.enabled':
     'When enabled, agents prefer to interact with partners whose vocabularies are similar to their own. This creates a feedback loop: agents who agree tend to keep agreeing, forming clusters. Disable to ablate this feature and compare outcomes.',
@@ -124,6 +153,12 @@ export const helpText: Record<string, string> = {
 
   'playground.prefAttachTemp':
     'Live-adjustable preferential attachment temperature. Changes take effect immediately without resetting the run.',
+
+  'playground.gaussianSigma':
+    "Live-adjustable Gaussian kernel width. Effective on the next tick — drag the slider during a running simulation to see the success-probability surface change in real time. Only applies when the success policy is set to 'gaussian' in the config editor.",
+
+  'playground.attractThreshold':
+    'Live-adjustable migration threshold. Effective on the next tick. Only applies when migration is enabled in the config editor. Try lowering the threshold mid-run to watch agents start clustering, or raising it to watch them disperse.',
 
   'playground.monoBiRatio':
     'Monolingual:bilingual ratio. Changing this requires a full reset because it changes the population composition. The ↺ symbol indicates this.',
@@ -163,6 +198,9 @@ export const helpText: Record<string, string> = {
 
   'chart.segregation':
     'Louvain modularity of the subgraph containing only W2-Immigrant nodes. High values indicate immigrants form a tight internal community with little cross-group communication — the "ghetto" effect. Low values indicate immigrants are dispersed across the broader interaction network.',
+
+  'chart.spatialHomophily':
+    'Mean cosine similarity between each agent and its lattice neighbors, averaged across the world. High = neighbors talk like each other (linguistic clustering, possibly driven by migration); low = neighbors talk differently (well-mixed vocabulary). Always computed (regardless of whether migration is enabled), so it serves as a baseline for ablation. NaN for non-lattice topologies — the line breaks at those ticks.',
 
   // ── Run summary ───────────────────────────────────────────────────────
   'run.classification':

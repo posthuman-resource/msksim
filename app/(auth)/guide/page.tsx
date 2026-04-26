@@ -56,6 +56,16 @@ export default async function GuidePage() {
             </a>
           </li>
           <li>
+            <a href="#gaussian" className="hover:text-zinc-900">
+              Gaussian Success Policy
+            </a>
+          </li>
+          <li>
+            <a href="#migration" className="hover:text-zinc-900">
+              Linguistic Migration
+            </a>
+          </li>
+          <li>
             <a href="#glossary" className="hover:text-zinc-900">
               Glossary
             </a>
@@ -401,7 +411,86 @@ export default async function GuidePage() {
             <MetricEntry title="Louvain Modularity" helpKey="chart.modularity" />
             <MetricEntry title="Assimilation Index" helpKey="chart.assimilation" />
             <MetricEntry title="Segregation Index" helpKey="chart.segregation" />
+            <MetricEntry title="Spatial Homophily" helpKey="chart.spatialHomophily" />
           </div>
+        </section>
+
+        {/* ── Gaussian Success Policy (post-v1) ────────────────── */}
+        <section id="gaussian">
+          <h2 className="text-xl font-bold text-zinc-900 mb-3">Gaussian Success Policy</h2>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            By default, communication succeeds only when the hearer already knows the
+            <em> exact </em>
+            token the speaker uttered for the same referent &mdash; a sharp binary outcome straight
+            from the canonical Naming Game. The Gaussian success policy replaces that rule with a
+            smooth probability based on how similar the speaker&apos;s and hearer&apos;s overall
+            top-K token-weight vectors are:
+          </p>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3 font-mono bg-zinc-50 border border-zinc-200 rounded px-3 py-2">
+            P<sub>s</sub>(i, j) = exp(&minus;&Vert;x<sub>i</sub> &minus; x<sub>j</sub>&Vert; &sup2;
+            &nbsp;/&nbsp; (2&sigma;&sup2;))
+          </p>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            Wider &sigma; makes the curve more forgiving &mdash; even agents with somewhat different
+            vocabularies will sometimes succeed. Narrower &sigma; makes communication brittle
+            &mdash; only near-identical agents reliably succeed. Use the deterministic policy for
+            the canonical model; switch to Gaussian when the research question is about how
+            <em> linguistic tolerance </em> shapes consensus dynamics.
+          </p>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            <strong>Try this:</strong> set kind=Gaussian, &sigma;=1.0, run 200 ticks. Then sweep
+            &sigma; from 0.1 to 5.0 with the same seed and compare consensus times. The
+            deterministic baseline lives at the &sigma;&rarr;0 limit; the well-mixed limit at
+            &sigma;&rarr;&infin;.
+          </p>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            With kind=deterministic (the default), the engine consumes zero new RNG draws and runs
+            bit-identically to pre-step-33 versions.
+          </p>
+        </section>
+
+        {/* ── Linguistic Migration (post-v1) ───────────────────── */}
+        <section id="migration">
+          <h2 className="text-xl font-bold text-zinc-900 mb-3">Linguistic Migration</h2>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            Lattice-based segregation in the Naming Game usually emerges from
+            <em> who talks to whom</em>. Linguistic migration adds a second mechanism inspired by
+            Schelling&apos;s segregation model: after each successful interaction, an agent on a
+            lattice may
+            <strong> step toward </strong> a partner whose vocabulary is similar (cosine similarity
+            &ge; <em>attractThreshold</em>) or
+            <strong> step away from </strong> a partner whose vocabulary is dissimilar (cosine
+            similarity &lt; <em>attractThreshold</em>). The two step counts are independent &mdash;
+            the PDF-recommended defaults are 1 cell forward, 2 cells back, making repulsion stronger
+            than attraction.
+          </p>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            Lattice topology only &mdash; the engine gates movement on a topology
+            <em> capability</em>, so well-mixed and network worlds simply ignore the setting. When
+            an agent tries to step into an occupied cell, the
+            <strong> collision policy </strong>
+            decides what happens: <em>Swap</em> trades positions with the occupant (clean Schelling
+            dynamics, conserves cell-occupancy); <em>Skip</em> cancels the move silently (reduces
+            effective migration rate when the lattice is dense).
+          </p>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            The new <strong>Spatial Homophily</strong> chart on the metrics dashboard tracks the
+            mean cosine similarity between each agent and its lattice neighbors. Watch this rise as
+            clusters form. The metric is computed every tick regardless of whether migration is on,
+            so it doubles as the baseline observable for ablations.
+          </p>
+          <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+            <strong>Try this:</strong> enable migration with attractThreshold=0.5, run with movement
+            disabled for comparison &mdash; both runs produce the
+            <em> Spatial Homophily </em>
+            metric, so you can see whether migration actively accelerates spatial clustering, or
+            whether the topology was producing it deterministically already.
+          </p>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            With movement.enabled=false (the default), the engine short-circuits the migration pass
+            to a no-op and consumes zero new RNG draws &mdash; pre-step-34 runs remain
+            bit-identical.
+          </p>
         </section>
 
         {/* ── Glossary ─────────────────────────────────────────── */}

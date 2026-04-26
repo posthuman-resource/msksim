@@ -23,6 +23,7 @@ import { ChartPanel } from './chart-panel';
 import type { YAxisMode } from './chart-panel';
 import { getHistoryWindow } from './metrics-history';
 import type { MetricsHistory, TickReport } from './metrics-history';
+import { spatialHomophilyShaper } from './metrics-shapers';
 
 // ─── Okabe-Ito colorblind-safe palette ───────────────────────────────────────
 // Reserved assignment: sky-blue = World 1, vermillion = World 2, bluish-green = Combined
@@ -158,6 +159,17 @@ const CHART_CONFIGS: ChartConfig[] = [
       tick: r.tick,
       value: r.graph.segregationIndex,
     }),
+  },
+  {
+    id: 'spatial-homophily',
+    title: 'Spatial Homophily',
+    helpKey: 'chart.spatialHomophily',
+    series: [
+      { dataKey: 'world1', name: 'World 1', color: COLORS.skyBlue },
+      { dataKey: 'world2', name: 'World 2', color: COLORS.vermillion },
+    ],
+    defaultYAxisMode: 'zeroOne',
+    shaper: spatialHomophilyShaper,
   },
 ];
 

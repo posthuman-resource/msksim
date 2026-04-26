@@ -33,6 +33,13 @@ More specifically, the tool helps investigate:
 
 Every simulation is **deterministic** — given the same configuration and random seed, you get identical results. This makes runs reproducible and shareable.
 
+### Recent additions (post-v1)
+
+- **Gaussian success policy** (configurable in the experiment editor): replace the binary "hearer-knows-the-token" success rule with a smooth probability `Ps = exp(-‖xi - xj‖² / (2σ²))`. Lets you study how vocabulary tolerance affects consensus dynamics. See the in-app guide for the full kernel and a suggested σ-sweep.
+- **Linguistic migration** (configurable; lattice topology only): after each successful interaction, agents step toward (high vocabulary similarity) or away from (low similarity) their partner — a Schelling-style segregation dynamic specific to language. The new "Spatial Homophily" chart in the playground tracks the result.
+
+Both features are off by default. Existing experiment configs continue to behave identically to v1.
+
 ## Getting it running
 
 ### Prerequisites

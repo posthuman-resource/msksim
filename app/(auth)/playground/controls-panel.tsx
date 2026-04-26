@@ -86,6 +86,13 @@ export function ControlsPanel({
   const [interactionProbDraft, setInteractionProbDraft] = useState(config.interactionProbability);
   const [ratioDraft, setRatioDraft] = useState(config.world1.monolingualBilingualRatio);
   const [prefTempDraft, setPrefTempDraft] = useState(config.preferentialAttachment.temperature);
+  // Step 33/34 live-safe knobs. Defaults read from config when present; otherwise neutral.
+  const gaussianSigmaInitial =
+    config.successPolicy.kind === 'gaussian' ? config.successPolicy.sigma : 1.0;
+  const [gaussianSigmaDraft, setGaussianSigmaDraft] = useState(gaussianSigmaInitial);
+  const [attractThresholdDraft, setAttractThresholdDraft] = useState(
+    config.movement.attractThreshold,
+  );
 
   // Sync drafts when config changes from above (e.g. after rebootstrap).
   useEffect(() => {
@@ -103,6 +110,14 @@ export function ControlsPanel({
   useEffect(() => {
     setPrefTempDraft(config.preferentialAttachment.temperature);
   }, [config.preferentialAttachment.temperature]);
+  useEffect(() => {
+    if (config.successPolicy.kind === 'gaussian') {
+      setGaussianSigmaDraft(config.successPolicy.sigma);
+    }
+  }, [config.successPolicy]);
+  useEffect(() => {
+    setAttractThresholdDraft(config.movement.attractThreshold);
+  }, [config.movement.attractThreshold]);
 
   // ─── Debounced slider effects ───────────────────────────────────────────────
   // Live-safe: deltaPositive, deltaNegative, interactionProbability, prefAttach temperature.
@@ -148,6 +163,35 @@ export function ControlsPanel({
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [prefTempDraft, onConfigUpdate, config.preferentialAttachment]);
+
+  // Gaussian σ — live-safe; only meaningful when kind === 'gaussian'.
+  // The conditional render below means the slider isn't visible (and so the draft
+  // can't change) while kind is 'deterministic', so this effect is inert in that case.
+  useEffect(() => {
+    const policy = config.successPolicy;
+    if (policy.kind !== 'gaussian') return;
+    const timer = setTimeout(() => {
+      onConfigUpdate({
+        successPolicy: {
+          kind: 'gaussian',
+          sigma: gaussianSigmaDraft,
+          gaussianTopK: policy.gaussianTopK,
+        },
+      });
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [gaussianSigmaDraft, onConfigUpdate, config.successPolicy]);
+
+  // Migration attract threshold — live-safe; gated on movement.enabled below.
+  useEffect(() => {
+    if (!config.movement.enabled) return;
+    const timer = setTimeout(() => {
+      onConfigUpdate({
+        movement: { ...config.movement, attractThreshold: attractThresholdDraft },
+      });
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [attractThresholdDraft, onConfigUpdate, config.movement]);
 
   // ─── JSX ────────────────────────────────────────────────────────────────────
 
@@ -335,6 +379,59 @@ export function ControlsPanel({
             className="w-full accent-blue-500"
           />
         </div>
+
+        {/* Gaussian σ — live; rendered only when successPolicy.kind === 'gaussian' */}
+        {config.successPolicy.kind === 'gaussian' && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-gray-200">
+                Gaussian σ
+                <HelpTip helpKey="playground.gaussianSigma" variant="dark" />
+              </label>
+              <span data-testid="gaussian-sigma-value" className="text-xs font-mono text-gray-300">
+                {gaussianSigmaDraft.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0.01}
+              max={5}
+              step={0.01}
+              value={gaussianSigmaDraft}
+              onChange={(e) => setGaussianSigmaDraft(Number(e.target.value))}
+              className="w-full accent-blue-500"
+              data-testid="gaussian-sigma-slider"
+            />
+          </div>
+        )}
+
+        {/* Migration attract threshold — live; rendered only when movement.enabled */}
+        {config.movement.enabled && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-gray-200">
+                Attract threshold
+                <HelpTip helpKey="playground.attractThreshold" variant="dark" />
+              </label>
+              <span
+                data-testid="attract-threshold-value"
+                className="text-xs font-mono text-gray-300"
+              >
+                {attractThresholdDraft.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={attractThresholdDraft}
+              onChange={(e) => setAttractThresholdDraft(Number(e.target.value))}
+              className="w-full accent-blue-500"
+              data-testid="attract-threshold-slider"
+            />
+          </div>
+        )}
 
         {/* Mono/bi ratio — reset-required */}
         <div className="flex flex-col gap-1">
